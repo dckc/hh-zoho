@@ -1,13 +1,13 @@
 /*
  * Author       : hopeharbor
- * Generated on : 11-May-2011 20:26:11
+ * Generated on : 11-May-2011 20:56:37
  * Version      : 3.0
  */
 application "Hope Harbor"
 {
     allow html = true
     secured connection = true
-    date format = "MM/dd/yyyy"
+    date format = "dd-MMM-yy"
     time zone = "America/Chicago"
     section progress_note
     {
@@ -439,9 +439,12 @@ application "Hope Harbor"
             displayname = "group View"
             show  all  rows  from  group 
             (
+                Eval
+                (
+                    width = 40px
+                )
                 Name
                 rate
-                Eval
             )
         }
 
@@ -1046,10 +1049,15 @@ application "Hope Harbor"
             displayname = "session View"
             show  all  rows  from  session 
             (
+                Group.Eval
+                Group
                 date_field as "date"
-                id_dabble as "idx"
-                Therapist
                 Time
+                Therapist
+            )
+            options
+            (
+                display rows = 20
             )
         }
 
@@ -1077,20 +1085,6 @@ application "Hope Harbor"
 
     section Reports
     {
-        report Officers_test
-        {
-            displayname = "Officers test"
-            type = PivotTable
-            based on officer_View
-        }
-
-        report Officers_test_2
-        {
-            displayname = "Officers test 2"
-            type = PivotTable
-            based on officer_View
-        }
-
         list  Officer_print_test
         {
             displayname = "Officer print test"
@@ -1107,9 +1101,23 @@ application "Hope Harbor"
 
         htmlpage HTML_PDF_Test()
 displayname = "HTML PDF Test"
+print = true
+pdf = true
 content
-        <%{
-        }%>
+        <%{%>
+<table>
+<thead><th>Name</th><th>Fax</th></thead>
+<tbody>
+ <%for each office in office sort by  Name 
+            {%>
+   <tr>
+    <td><%=office.Name%></td>
+    <td><%=office.fax%></td>
+   </tr>
+                <%}%>
+</tbody>
+</table>
+        <%}%>
 
     }
 
@@ -1118,10 +1126,5 @@ content
         layout = "tab"
         base theme = "headerimage"
         color = "light green"
-    }
-    reports configuration
-    {
-        Version = 1251000015512031
-        Key     = "fmD46y2Z0fg633Fky70ChSyUep7ts2bhmy1FRd0HtVNzmwZOBKFrWbjj0R6Jp7wqz2StdWtwTT0rqV3GwxN97YyCt14Q4PbRGVPW"
     }
 }
