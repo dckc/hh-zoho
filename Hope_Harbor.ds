@@ -1,13 +1,13 @@
 /*
  * Author       : hopeharbor
- * Generated on : 11-May-2011 20:56:37
+ * Generated on : 11-May-2011 22:45:22
  * Version      : 3.0
  */
 application "Hope Harbor"
 {
     allow html = true
     secured connection = true
-    date format = "dd-MMM-yy"
+    date format = "MM/dd/yyyy"
     time zone = "America/Chicago"
     section progress_note
     {
@@ -138,6 +138,7 @@ application "Hope Harbor"
             (
                 type  =  picklist
                 values  =  client.ID
+                displayformat = [ Name ]
                 allow new entries = true
                 [
                     displayname = "Add client"
@@ -191,120 +192,6 @@ application "Hope Harbor"
                 width  =  100px
             )
 
-            group
-            (
-                type  =  picklist
-                values  =  group.ID
-                allow new entries = true
-                [
-                    displayname = "Add group"
-                ]
-                width  =  206px
-            )
-
-            client_batch
-            (
-                displayname  =  "client » batch"
-                type  =  picklist
-                values  =  batch.ID
-                allow new entries = true
-                [
-                    displayname = "Add batch"
-                ]
-                width  =  206px
-            )
-
-            Officer
-            (
-                type  =  list
-                values  =  officer.ID
-                allow new entries = true
-                [
-                    displayname = "Add officer"
-                ]
-                height  =  60px
-                width  =  206px
-            )
-
-            rate
-            (
-                type  =  USD
-                width  =  100px
-            )
-
-            rate_attend
-            (
-                displayname  =  "(rate) × attend"
-                type  =  USD
-                width  =  100px
-            )
-
-            rate_attend_client_pd
-            (
-                displayname  =  "((rate) × attend) − client pd"
-                type  =  USD
-                width  =  100px
-            )
-
-            due
-            (
-                type  =  USD
-                width  =  100px
-            )
-
-            officers
-            (
-                type  =  text
-                width  =  200px
-            )
-
-            officers_Append_suffix
-            (
-                displayname  =  "(officers) Append suffix"
-                type  =  text
-                width  =  200px
-            )
-
-            client_Ins
-            (
-                displayname  =  "client » Ins"
-                type  =  text
-                width  =  200px
-            )
-
-            session_date_Start_Date
-            (
-                displayname  =  "session » date » Start Date"
-                type  =  date
-                width  =  130px
-            )
-
-            Time
-            (
-                type  =  text
-                width  =  200px
-            )
-
-            group_Eval
-            (
-                displayname  =  "group » Eval"
-                type  =  checkbox
-                defaultvalue  =  false
-            )
-
-            Therapist
-            (
-                type  =  picklist
-                values  =  {"Ratliff, Dr. Bascom",   "Maxey, Debra",   "Woody",   "Clemmons, Tamara",   "Hall, Jon",   "Amy",   "Mary C",   "Yang, Ann",   "Lowe, Kelly",   "Fry, Tori",   "Jackson, Cherlisa",   "Hardy, Lauren",   "Delhanty, Will",   "Jessi Lefholz",   "Shelton, Danyele",   "Christa",   "Delehanty, Will",   "Casey, Meghan",   "Lynda Falley",   "Parrett, Shelley",   "Kathryn Dawn",   "Foxworthy, Brian",   "Porter, Pamela",   "McLemore, Alicia",   "Hammond, Chelsea",   "April Craig",   "Susan"}
-                width  =  206px
-            )
-
-            Balance
-            (
-                type  =  USD
-                width  =  100px
-            )
-
             actions
             {
                 on add
@@ -341,32 +228,20 @@ application "Hope Harbor"
             displayname = "visit View"
             show  all  rows  from  visit 
             (
-                client_pd as "client pd"
-                note
-                bill_date as "bill date"
-                check_date as "check date"
-                ins_paid as "ins paid $"
-                session
-                (
-                    view = session_Summary
-                )
-                id_dabble as "filemaker_key"
+                session.date_field as "Session Date"
+                session.Group
                 client
-                group
-                client_batch as "client » batch"
-                Officer
-                rate
-                rate_attend as "(rate) × attend"
-                rate_attend_client_pd as "((rate) × attend) − client pd"
-                due
-                officers
-                officers_Append_suffix as "(officers) Append suffix"
-                client_Ins as "client » Ins"
-                session_date_Start_Date as "session » date » Start Date"
-                Time
-                group_Eval as "group » Eval"
-                Therapist
-                Balance
+                (
+                    view = client_Summary1
+                )
+                note
+                client_pd as "client pd"
+                bill_date as "bill date"
+                ins_paid as "ins paid $"
+                check_date as "check date"
+                session
+                id_dabble as "filemaker_key"
+                client.Name as "Client Name"
             )
         }
 
@@ -487,92 +362,24 @@ application "Hope Harbor"
                 width  =  200px
             )
 
-            officer
-            (
-                type  =  list
-                values  =  officer.ID
-                allow new entries = true
-                [
-                    displayname = "Add officer"
-                ]
-                height  =  60px
-                width  =  206px
-            )
-
-            batch
+            Officer
             (
                 type  =  picklist
-                values  =  batch.ID
+                values  =  officer.ID
+                displayformat = [ Name ]
                 allow new entries = true
                 [
-                    displayname = "Add batch"
+                    displayname = "officer"
                 ]
+                sortorder  =  ascending
                 width  =  206px
             )
 
-            idx
+            id_dabble
             (
-                type  =  decimal
-                decimalplace  =  10
+                type  =  number
+                private  =  true
                 width  =  100px
-            )
-
-            visit_session
-            (
-                displayname  =  "visit » session"
-                type  =  list
-                values  =  session.ID
-                allow new entries = true
-                [
-                    displayname = "Add session"
-                ]
-                height  =  60px
-                width  =  206px
-            )
-
-            visit_Dup_1
-            (
-                displayname  =  "visit Dup 1"
-                type  =  date
-                width  =  130px
-            )
-
-            officer_email
-            (
-                displayname  =  "officer » email"
-                type  =  email
-                width  =  200px
-            )
-
-            address1
-            (
-                type  =  formula
-                value  =  (((("<a target='_blank' href='http://maps.google.com/maps?q=") + address) + "'>") + address) + "</a>"
-            )
-
-            address
-            (
-                type  =  text
-                width  =  200px
-            )
-
-            phone1
-            (
-                type  =  formula
-                value  =  "<a href='callto:" + phone + "'>" + phone + "</a>"
-            )
-
-            phone
-            (
-                type  =  text
-                width  =  200px
-            )
-
-            visit_session_date
-            (
-                displayname  =  "visit » session » date"
-                type  =  date
-                width  =  130px
             )
 
             DOB
@@ -581,16 +388,17 @@ application "Hope Harbor"
                 width  =  130px
             )
 
-            Office
+            address
             (
-                type  =  list
-                values  =  office.ID
-                allow new entries = true
-                [
-                    displayname = "Add office"
-                ]
-                height  =  60px
-                width  =  206px
+                type  =  textarea
+                height  =  100px
+                width  =  200px
+            )
+
+            phone
+            (
+                type  =  text
+                width  =  200px
             )
 
             actions
@@ -601,14 +409,6 @@ application "Hope Harbor"
                     (
                         type  =  submit
                         displayname  =  "Save Changes"
-                        on validate
-                        {
-                            if ((input.idx  !=  null)  &&  (input.idx  <  0))
-                            {
-                                alert "Please provide a value greater than 0 for idx";
-                                cancel submit;
-                            }
-                        }
                     )
                     Reset
                     (
@@ -622,14 +422,6 @@ application "Hope Harbor"
                     (
                         type  =  submit
                         displayname  =  "Save Changes"
-                        on validate
-                        {
-                            if ((input.idx  !=  null)  &&  (input.idx  <  0))
-                            {
-                                alert "Please provide a value greater than 0 for idx";
-                                cancel submit;
-                            }
-                        }
                     )
                     Cancel
                     (
@@ -646,21 +438,14 @@ application "Hope Harbor"
             show  all  rows  from  client 
             (
                 Name
-                Ins
-                Approval
-                DX
-                Note
-                officer
-                batch
-                idx
-                visit_session as "visit » session"
-                visit_Dup_1 as "visit Dup 1"
-                officer_email as "officer » email"
-                address1 as "address"
-                phone1 as "phone"
-                visit_session_date as "visit » session » date"
-                DOB
-                Office
+                Officer
+                (
+                    view = officer_Summary1
+                )
+            )
+            sort by
+            (
+                Name   ascending
             )
         }
 
@@ -674,24 +459,14 @@ application "Hope Harbor"
                 Approval
                 DX
                 Note
-                idx
-                visit_Dup_1 as "visit Dup 1"
-                officer_email as "officer » email"
-                address1
                 address
-                phone1
                 phone
-                visit_session_date as "visit » session » date"
                 DOB
-                officer
-                batch
-                visit_session as "visit » session"
-                Office
+                Officer
+                id_dabble
             )
             filters 
             (
-                visit_Dup_1
-                visit_session_date
                 DOB
             )
         }
@@ -706,27 +481,265 @@ application "Hope Harbor"
                 Approval
                 DX
                 Note
-                idx
-                visit_Dup_1 as "visit Dup 1"
-                officer_email as "officer » email"
-                address1
                 address
-                phone1
                 phone
-                visit_session_date as "visit » session » date"
                 DOB
-                officer
-                batch
-                visit_session as "visit » session"
-                Office
             )
             filters 
             (
-                visit_Dup_1
-                visit_session_date
                 DOB
             )
         }
+
+        htmlpage Invoice_Exploration()
+displayname = "Invoice Exploration"
+print = true
+pdf = true
+content
+        <%{%>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title></title>
+<link href="l1t1c2sda.css" rel="stylesheet" type="text/css" />
+<table id="customizeContentArea" width="100%" border="0" cellpadding="0" cellspacing="0">
+    <tbody>
+        <tr>
+            <td><!-- Company Name and Address -->
+            <table id="customizeContentArea2" width="100%" border="0" cellpadding="0" cellspacing="0">
+                <tbody>
+                    <tr>
+                        <td width="47%">logo</td>
+                        <td width="53%" align="right" valign="top">Associates at Hope Harbor , <br />
+                        CompanyStreetAddress1 , <br />
+                        CompanyStreetAddress2 , <br />
+                        CompanyCity , <br />
+                        CompanyState   CompanyPostalCode , <br />
+                        CompanyCountry .</td>
+                    </tr>
+                    <tr height="20">
+                        <td colspan="2"><hr />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><!-- Bill To Address -->
+                        <table width="70%" border="0" cellpadding="2" cellspacing="0" class="zc-summarytable-template">
+                            <tbody>
+                                <tr>
+                                    <td class="zc-viewrowheader-template"><strong>Bill To</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>CustomerName ,<br />
+                                    CustomerBillToAddress ,<br />
+                                    CustomerBillToCity ,<br />
+                                    CustomerBillToState ,<br />
+                                    CustomerBillToCountry ,<br />
+                                    ContactEMailIds .</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <br />
+                        <!-- Ship To Address -->
+                        <table width="70%" border="0" cellpadding="2" cellspacing="0" class="zc-summarytable-template">
+                            <tbody>
+                                <tr>
+                                    <td class="zc-viewrowheader-template"><strong>Ship To</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>CustomerShipToAddress ,<br />
+                                    CustomerShipToCity ,<br />
+                                    CustomerShipToState ,<br />
+                                    CustomerShipToCountry ,<br />
+                                    CustomerShipToCode .</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        </td>
+                        <td valign="top" align="right"><!--  Items list -->
+                        <table width="56%" border="0" cellpadding="5" cellspacing="0" class="zc-summarytable-template">
+                            <tbody>
+                                <tr>
+                                    <td width="35%" class="zc-summary-label-template"><strong>Invoice #</strong></td>
+                                    <td width="65%" class="zc-summary-data-template">InvoiceNumber</td>
+                                </tr>
+                                <tr>
+                                    <td class="zc-summary-label-template"><strong>Invoice Date </strong></td>
+                                    <td class="zc-summary-data-template">InvoiceDate</td>
+                                </tr>
+                                <tr>
+                                    <td class="zc-summary-label-template"><strong>Terms</strong></td>
+                                    <td class="zc-summary-data-template">NetTerms</td>
+                                </tr>
+                                <tr>
+                                    <td class="zc-summary-label-template"><strong>Due Date </strong></td>
+                                    <td class="zc-summary-data-template">DueDate</td>
+                                </tr>
+                                <tr>
+                                    <td class="zc-summary-label-template"><strong>P.O. # </strong></td>
+                                    <td class="zc-summary-data-template">P.O.Number</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td valign="top" align="right">&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2">
+                        <table width="100%" border="0" cellpadding="5" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th align="left" class="zc-viewrowheader-template">Item</th>
+                                    <th align="left" class="zc-viewrowheader-template">Description</th>
+                                    <th class="zc-viewrowheader-template" align="right">Qty.</th>
+                                    <th class="zc-viewrowheader-template" align="right">Rate</th>
+                                    <th class="zc-viewrowheader-template" align="right">Discount</th>
+                                    <th class="zc-viewrowheader-template" align="right">Amount</th>
+                                </tr>
+                                <tr class="zc-viewrow zc-row-1">
+                                    <td align="left" czc-viewrow="" zc-row-1="">ItemName</td>
+                                    <td align="left">ItemDescription</td>
+                                    <td align="right">ItemQty</td>
+                                    <td align="right">ItemRate</td>
+                                    <td align="right">ItemDiscount</td>
+                                    <td align="right">ItemAmount</td>
+                                </tr>
+                                <tr class="zc-viewrow zc-row-1">
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td align="right">&nbsp;</td>
+                                    <td align="right">&nbsp;</td>
+                                    <td align="right">&nbsp;</td>
+                                    <td align="right">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                    <td width="32%" colspan="6">&nbsp;</td>
+                                </tr>
+                            </thead>
+                        </table>
+                        <!--  Notes -->
+                        <table width="100%" border="0" cellpadding="5" cellspacing="0">
+                            <tbody>
+                                <tr>
+                                    <td width="64%" valign="top">Notes</td>
+                                    <td width="36%" valign="top"><!--  Total and Balance Due Calculations -->
+                                    <table width="100%" border="0" cellpadding="5" cellspacing="0">
+                                        <tbody>
+                                            <tr class="zc-viewrow zc-row-1">
+                                                <td width="9%" align="right">SubTotal</td>
+                                                <td width="17%" align="right">InvoiceSubTotal</td>
+                                            </tr>
+                                            <tr class="zc-viewrow zc-row-1">
+                                                <td align="right">TaxName</td>
+                                                <td align="right">TaxValue</td>
+                                            </tr>
+                                            <tr class="zc-viewrow zc-row-1">
+                                                <td align="right"><b>Total</b></td>
+                                                <td align="right">InvoiceTotal</td>
+                                            </tr>
+                                            <tr class="zc-viewrow zc-row-1">
+                                                <td align="right">Late Fee</td>
+                                                <td align="right">LateFee</td>
+                                            </tr>
+                                            <tr class="zc-viewrow zc-row-1">
+                                                <td align="right">Payment Made</td>
+                                                <td align="right">PaymentMade</td>
+                                            </tr>
+                                            <tr class="zc-viewrow zc-row-1">
+                                                <td align="right"><strong>Balance Due</strong></td>
+                                                <td align="right">InvoiceBalance</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td height="40" colspan="2">&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <!--  Terms and Conditions -->
+                        <td colspan="2"><strong>Terms and Conditions</strong>                                                         <br />
+                        <br />
+                        TermsAndConditions</td>
+                    </tr>
+                </tbody>
+            </table>
+            </td>
+        </tr>
+    </tbody>
+</table>
+<style type="text/css">
+
+*.zc-viewtable { 
+        width : 100%;
+        border-top : none;
+        border-right : 1px solid rgb(93,155,215);
+        border-left : 1px solid rgb(93,155,215);
+        border-bottom : 1px solid rgb(93,155,215);
+}
+*.zc-viewheader { 
+        background-color : rgb(127, 190, 251);
+        padding : 5px 5px;
+        text-align : left;
+        border-top : 1px solid rgb(93,155,215);
+        border-left : 1px solid rgb(93,155,215);
+        border-right : 1px solid rgb(93,155,215);
+        border-bottom : 1px solid rgb(93,155,215);
+        background-image : none;
+}
+*.zc-viewheader-height { 
+        height : 25px;
+} 
+.zc-viewrowheader-template
+{
+        background-color : rgb(127, 190, 251);
+        padding : 5px 5px;
+        text-align : left;
+        border-top : 1px solid rgb(93,155,215);
+        border-left : 1px solid rgb(93,155,215);
+        border-right : 1px solid rgb(93,155,215);
+        border-bottom : 1px solid rgb(93,155,215);
+        background-image : none;
+} 
+
+*.zc-viewrow td { 
+        border-left : none;
+        border-bottom : 1px solid rgb(205,228,249);
+        border-right : 1px solid rgb(205,228,249);
+        vertical-align : middle;
+        white-space : nowrap;
+        height : 27px;
+        font-size : 12px;
+        padding : 3px;
+} 
+*.zc-row-1 { 
+        background-color : rgb(255, 255, 255);
+} 
+.zc-summarytable-template
+{
+        border:1px solid #CFE2A9;
+}
+.zc-summary-label-template
+{
+        font: 12px Arial, Helvetica, sans-serif;
+        background-color :rgb(127, 190, 251);
+        border-bottom:1px solid #DBEBBB;
+        border-right:1px solid #DBEBBB;
+        height:25px;
+}
+
+.zc-summary-data-template
+{
+        font: 12px Arial, Helvetica, sans-serif;
+        height:25px;
+        background-color:#FFFFFF;
+        border-bottom:1px solid #DBEBBB;
+}
+
+</style></meta>        <%}%>
 
     }
 
@@ -802,6 +815,36 @@ application "Hope Harbor"
                 (
                     view = office_Summary1
                 )
+            )
+        }
+
+        summary  officer_Summary
+        {
+            displayname = "officer Summary"
+            show  all  rows  from  officer 
+            (
+                Name
+                email
+                office
+            )
+            permission
+            (
+                add = true
+                duplicate = true
+                edit = true
+                bulk edit = true
+                delete = true
+            )
+        }
+
+        summary  officer_Summary1
+        {
+            displayname = "officer Summary"
+            show  all  rows  from  officer 
+            (
+                Name
+                email
+                office
             )
         }
 
@@ -999,6 +1042,12 @@ application "Hope Harbor"
                 width  =  206px
             )
 
+            Name
+            (
+                type  =  formula
+                value  =  (Group.toString()) + date_field.toString()
+            )
+
             group_dabble
             (
                 type  =  number
@@ -1046,12 +1095,12 @@ application "Hope Harbor"
 
         list  session_View
         {
-            displayname = "session View"
+            displayname = "Sessions"
             show  all  rows  from  session 
             (
                 Group.Eval
-                Group
-                date_field as "date"
+                date_field as "Date"
+                Group.Name
                 Time
                 Therapist
             )
@@ -1073,6 +1122,7 @@ application "Hope Harbor"
                 Month
                 Group
                 group_dabble
+                Name
             )
             filters 
             (
@@ -1081,24 +1131,74 @@ application "Hope Harbor"
             )
         }
 
+        htmlpage Sign_in_Sheet()
+displayname = "Sign-in Sheet"
+content
+        <%{%>
+<h1>Sign-in Sheet</h1>
+
+<div elName='zc-component' formLinkName='session' params='zc_Header=true&amp;zc_SuccMsg=Data Added Sucessfully!&amp;zc_SubmitVal=Submit&amp;zc_ResetVal=Reset'>Loading Form...</div> 
+<div elName='zc-component' formLinkName='visit' params='zc_Header=false&amp;zc_SuccMsg=Data Added Sucessfully!&amp;zc_SubmitVal=Submit&amp;zc_ResetVal=Reset'>Loading Form...</div>         <%}%>
+
+        calendar  Session_Calendar
+        {
+            displayname = "Session Calendar"
+            show  all  rows  from  session 
+            (
+                date_field as "date"
+                Group
+            )
+            filters 
+            (
+                date_field
+                Therapist
+            )
+            options
+            (
+                show calendar based on date_field
+            )
+        }
+
+        htmlpage Recent_Sessions()
+displayname = "Recent Sessions"
+print = true
+pdf = true
+content
+        <%{%>
+<p><em>todo: link groups, clients</em></p>
+<table>
+<thead>
+<th>date</th>
+<th>group</th>
+<th>Last Modified</th>
+<th>visit</th>
+</thead>
+<tbody><%for each s in session sort by  date_field desc
+            {%>
+<tr>
+ <td><%=s.date_field%></td>
+
+ <td>        <%grp  =  group  [ID == s.Group];%>
+<%=grp.Name%>
+</td>
+ <td>@@</td>
+ <td>                <%for each v in visit  [session == s.ID]
+                {%>
+ <%=v.client.Name%>
+                                                                                              <%}%>
+ </td>
+
+     
+</tr>
+                                                            <%}%>
+</tbody>
+</table>
+        <%}%>
+
     }
 
     section Reports
     {
-        list  Officer_print_test
-        {
-            displayname = "Officer print test"
-            show  all  rows  from  officer 
-            (
-                Name
-                email
-                office
-                (
-                    view = office_Summary1
-                )
-            )
-        }
-
         htmlpage HTML_PDF_Test()
 displayname = "HTML PDF Test"
 print = true
@@ -1123,7 +1223,7 @@ content
 
     customize
     {
-        layout = "tab"
+        layout = "drop down menu"
         base theme = "headerimage"
         color = "light green"
     }
