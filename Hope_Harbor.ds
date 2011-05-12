@@ -1,0 +1,1127 @@
+/*
+ * Author       : hopeharbor
+ * Generated on : 11-May-2011 20:26:11
+ * Version      : 3.0
+ */
+application "Hope Harbor"
+{
+    allow html = true
+    secured connection = true
+    date format = "MM/dd/yyyy"
+    time zone = "America/Chicago"
+    section progress_note
+    {
+        displayname = "progress note"
+        form  progress_note
+        {
+            displayname  =  "progress note"
+            field alignment = left
+            
+            notes
+            (
+                type = richtext
+                height  =  200px
+                width  =  382px
+                toolbar = enable
+            )
+
+            must  have  signed_by
+            (
+                displayname  =  "signed by"
+                type  =  email
+                width  =  200px
+            )
+
+            signed_on
+            (
+                displayname  =  "signed on"
+                type  =  date
+                width  =  130px
+            )
+
+            must  have  client
+            (
+                type  =  picklist
+                values  =  client.ID
+                displayformat = [ Name + " - " + DOB ]
+                allow new entries = true
+                [
+                    displayname = "Add client"
+                ]
+                width  =  206px
+            )
+
+            session_duration
+            (
+                displayname  =  "session duration"
+                type  =  datetime
+                width  =  130px
+            )
+
+            session_date
+            (
+                displayname  =  "session date"
+                type  =  date
+                width  =  130px
+            )
+
+            actions
+            {
+                on add
+                {
+                    on load
+                    {
+                        input.signed_on = zoho.currenttime;
+                    }
+                    Submit
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Reset
+                    (
+                        type  =  reset
+                        displayname  =  "Reset Form"
+                    )
+                }
+                on edit
+                {
+                    Update
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Cancel
+                    (
+                        type  =  cancel
+                        displayname  =  "Close Form"
+                    )
+                }
+            }
+        }
+
+        summary  progress_note_View
+        {
+            displayname = "progress note View"
+            show  all  rows  from  progress_note 
+            (
+                notes
+                signed_by as "signed by"
+                signed_on as "signed on"
+                client
+                session_duration as "session duration"
+                session_date as "session date"
+            )
+        }
+
+    }
+
+    section visit
+    {
+        form  visit
+        {
+            field alignment = left
+            
+            session
+            (
+                type  =  picklist
+                values  =  session.ID
+                displayformat = [ date_field ]
+                allow new entries = true
+                [
+                    displayname = "Add session"
+                ]
+                width  =  206px
+            )
+
+            client
+            (
+                type  =  picklist
+                values  =  client.ID
+                allow new entries = true
+                [
+                    displayname = "Add client"
+                ]
+                width  =  206px
+            )
+
+            Attend
+            (
+                type  =  checkbox
+                defaultvalue  =  false
+            )
+
+            client_pd
+            (
+                displayname  =  "client pd"
+                type  =  USD
+                width  =  100px
+            )
+
+            note
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            bill_date
+            (
+                displayname  =  "bill date"
+                type  =  date
+                width  =  130px
+            )
+
+            check_date
+            (
+                displayname  =  "check date"
+                type  =  date
+                width  =  130px
+            )
+
+            ins_paid
+            (
+                displayname  =  "ins paid $"
+                type  =  USD
+                width  =  100px
+            )
+
+            id_dabble
+            (
+                type  =  number
+                width  =  100px
+            )
+
+            group
+            (
+                type  =  picklist
+                values  =  group.ID
+                allow new entries = true
+                [
+                    displayname = "Add group"
+                ]
+                width  =  206px
+            )
+
+            client_batch
+            (
+                displayname  =  "client » batch"
+                type  =  picklist
+                values  =  batch.ID
+                allow new entries = true
+                [
+                    displayname = "Add batch"
+                ]
+                width  =  206px
+            )
+
+            Officer
+            (
+                type  =  list
+                values  =  officer.ID
+                allow new entries = true
+                [
+                    displayname = "Add officer"
+                ]
+                height  =  60px
+                width  =  206px
+            )
+
+            rate
+            (
+                type  =  USD
+                width  =  100px
+            )
+
+            rate_attend
+            (
+                displayname  =  "(rate) × attend"
+                type  =  USD
+                width  =  100px
+            )
+
+            rate_attend_client_pd
+            (
+                displayname  =  "((rate) × attend) − client pd"
+                type  =  USD
+                width  =  100px
+            )
+
+            due
+            (
+                type  =  USD
+                width  =  100px
+            )
+
+            officers
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            officers_Append_suffix
+            (
+                displayname  =  "(officers) Append suffix"
+                type  =  text
+                width  =  200px
+            )
+
+            client_Ins
+            (
+                displayname  =  "client » Ins"
+                type  =  text
+                width  =  200px
+            )
+
+            session_date_Start_Date
+            (
+                displayname  =  "session » date » Start Date"
+                type  =  date
+                width  =  130px
+            )
+
+            Time
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            group_Eval
+            (
+                displayname  =  "group » Eval"
+                type  =  checkbox
+                defaultvalue  =  false
+            )
+
+            Therapist
+            (
+                type  =  picklist
+                values  =  {"Ratliff, Dr. Bascom",   "Maxey, Debra",   "Woody",   "Clemmons, Tamara",   "Hall, Jon",   "Amy",   "Mary C",   "Yang, Ann",   "Lowe, Kelly",   "Fry, Tori",   "Jackson, Cherlisa",   "Hardy, Lauren",   "Delhanty, Will",   "Jessi Lefholz",   "Shelton, Danyele",   "Christa",   "Delehanty, Will",   "Casey, Meghan",   "Lynda Falley",   "Parrett, Shelley",   "Kathryn Dawn",   "Foxworthy, Brian",   "Porter, Pamela",   "McLemore, Alicia",   "Hammond, Chelsea",   "April Craig",   "Susan"}
+                width  =  206px
+            )
+
+            Balance
+            (
+                type  =  USD
+                width  =  100px
+            )
+
+            actions
+            {
+                on add
+                {
+                    Submit
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Reset
+                    (
+                        type  =  reset
+                        displayname  =  "Reset Form"
+                    )
+                }
+                on edit
+                {
+                    Update
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Cancel
+                    (
+                        type  =  cancel
+                        displayname  =  "Close Form"
+                    )
+                }
+            }
+        }
+
+        list  visit_View
+        {
+            displayname = "visit View"
+            show  all  rows  from  visit 
+            (
+                client_pd as "client pd"
+                note
+                bill_date as "bill date"
+                check_date as "check date"
+                ins_paid as "ins paid $"
+                session
+                (
+                    view = session_Summary
+                )
+                id_dabble as "filemaker_key"
+                client
+                group
+                client_batch as "client » batch"
+                Officer
+                rate
+                rate_attend as "(rate) × attend"
+                rate_attend_client_pd as "((rate) × attend) − client pd"
+                due
+                officers
+                officers_Append_suffix as "(officers) Append suffix"
+                client_Ins as "client » Ins"
+                session_date_Start_Date as "session » date » Start Date"
+                Time
+                group_Eval as "group » Eval"
+                Therapist
+                Balance
+            )
+        }
+
+    }
+
+    section group
+    {
+        form  group
+        {
+            field alignment = left
+            
+            Name
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            rate
+            (
+                type  =  USD
+                width  =  100px
+            )
+
+            id_dabble
+            (
+                type  =  number
+                private  =  true
+                width  =  100px
+            )
+
+            Eval
+            (
+                type  =  checkbox
+                defaultvalue  =  false
+            )
+
+            actions
+            {
+                on add
+                {
+                    Submit
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Reset
+                    (
+                        type  =  reset
+                        displayname  =  "Reset Form"
+                    )
+                }
+                on edit
+                {
+                    Update
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Cancel
+                    (
+                        type  =  cancel
+                        displayname  =  "Close Form"
+                    )
+                }
+            }
+        }
+
+        list  group_View
+        {
+            displayname = "group View"
+            show  all  rows  from  group 
+            (
+                Name
+                rate
+                Eval
+            )
+        }
+
+    }
+
+    section client
+    {
+        form  client
+        {
+            field alignment = left
+            
+            Name
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            Ins
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            Approval
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            DX
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            Note
+            (
+                type  =  textarea
+                height  =  100px
+                width  =  200px
+            )
+
+            officer
+            (
+                type  =  list
+                values  =  officer.ID
+                allow new entries = true
+                [
+                    displayname = "Add officer"
+                ]
+                height  =  60px
+                width  =  206px
+            )
+
+            batch
+            (
+                type  =  picklist
+                values  =  batch.ID
+                allow new entries = true
+                [
+                    displayname = "Add batch"
+                ]
+                width  =  206px
+            )
+
+            idx
+            (
+                type  =  decimal
+                decimalplace  =  10
+                width  =  100px
+            )
+
+            visit_session
+            (
+                displayname  =  "visit » session"
+                type  =  list
+                values  =  session.ID
+                allow new entries = true
+                [
+                    displayname = "Add session"
+                ]
+                height  =  60px
+                width  =  206px
+            )
+
+            visit_Dup_1
+            (
+                displayname  =  "visit Dup 1"
+                type  =  date
+                width  =  130px
+            )
+
+            officer_email
+            (
+                displayname  =  "officer » email"
+                type  =  email
+                width  =  200px
+            )
+
+            address1
+            (
+                type  =  formula
+                value  =  (((("<a target='_blank' href='http://maps.google.com/maps?q=") + address) + "'>") + address) + "</a>"
+            )
+
+            address
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            phone1
+            (
+                type  =  formula
+                value  =  "<a href='callto:" + phone + "'>" + phone + "</a>"
+            )
+
+            phone
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            visit_session_date
+            (
+                displayname  =  "visit » session » date"
+                type  =  date
+                width  =  130px
+            )
+
+            DOB
+            (
+                type  =  date
+                width  =  130px
+            )
+
+            Office
+            (
+                type  =  list
+                values  =  office.ID
+                allow new entries = true
+                [
+                    displayname = "Add office"
+                ]
+                height  =  60px
+                width  =  206px
+            )
+
+            actions
+            {
+                on add
+                {
+                    Submit
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                        on validate
+                        {
+                            if ((input.idx  !=  null)  &&  (input.idx  <  0))
+                            {
+                                alert "Please provide a value greater than 0 for idx";
+                                cancel submit;
+                            }
+                        }
+                    )
+                    Reset
+                    (
+                        type  =  reset
+                        displayname  =  "Reset Form"
+                    )
+                }
+                on edit
+                {
+                    Update
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                        on validate
+                        {
+                            if ((input.idx  !=  null)  &&  (input.idx  <  0))
+                            {
+                                alert "Please provide a value greater than 0 for idx";
+                                cancel submit;
+                            }
+                        }
+                    )
+                    Cancel
+                    (
+                        type  =  cancel
+                        displayname  =  "Close Form"
+                    )
+                }
+            }
+        }
+
+        list  client_View
+        {
+            displayname = "client View"
+            show  all  rows  from  client 
+            (
+                Name
+                Ins
+                Approval
+                DX
+                Note
+                officer
+                batch
+                idx
+                visit_session as "visit » session"
+                visit_Dup_1 as "visit Dup 1"
+                officer_email as "officer » email"
+                address1 as "address"
+                phone1 as "phone"
+                visit_session_date as "visit » session » date"
+                DOB
+                Office
+            )
+        }
+
+        summary  client_Summary
+        {
+            displayname = "client Summary"
+            show  all  rows  from  client 
+            (
+                Name
+                Ins
+                Approval
+                DX
+                Note
+                idx
+                visit_Dup_1 as "visit Dup 1"
+                officer_email as "officer » email"
+                address1
+                address
+                phone1
+                phone
+                visit_session_date as "visit » session » date"
+                DOB
+                officer
+                batch
+                visit_session as "visit » session"
+                Office
+            )
+            filters 
+            (
+                visit_Dup_1
+                visit_session_date
+                DOB
+            )
+        }
+
+        summary  client_Summary1
+        {
+            displayname = "client Summary"
+            show  all  rows  from  client 
+            (
+                Name
+                Ins
+                Approval
+                DX
+                Note
+                idx
+                visit_Dup_1 as "visit Dup 1"
+                officer_email as "officer » email"
+                address1
+                address
+                phone1
+                phone
+                visit_session_date as "visit » session » date"
+                DOB
+                officer
+                batch
+                visit_session as "visit » session"
+                Office
+            )
+            filters 
+            (
+                visit_Dup_1
+                visit_session_date
+                DOB
+            )
+        }
+
+    }
+
+    section officer
+    {
+        form  officer
+        {
+            field alignment = left
+            
+            Name
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            email
+            (
+                type  =  email
+                width  =  200px
+            )
+
+            office
+            (
+                type  =  picklist
+                values  =  office.ID
+                displayformat = [ Name + " - " + fax ]
+                allow new entries = true
+                [
+                    displayname = "Add office"
+                ]
+                width  =  206px
+            )
+
+            actions
+            {
+                on add
+                {
+                    Submit
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Reset
+                    (
+                        type  =  reset
+                        displayname  =  "Reset Form"
+                    )
+                }
+                on edit
+                {
+                    Update
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Cancel
+                    (
+                        type  =  cancel
+                        displayname  =  "Close Form"
+                    )
+                }
+            }
+        }
+
+        list  officer_View
+        {
+            displayname = "officer View"
+            show  all  rows  from  officer 
+            (
+                Name
+                email
+                office
+                (
+                    view = office_Summary1
+                )
+            )
+        }
+
+    }
+
+    section office
+    {
+        form  office
+        {
+            field alignment = left
+            
+            Name
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            fax
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            notes
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            address
+            (
+                type  =  textarea
+                height  =  100px
+                width  =  200px
+            )
+
+            id_dabble
+            (
+                type  =  number
+                private  =  true
+                width  =  100px
+            )
+
+            actions
+            {
+                on add
+                {
+                    Submit
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Reset
+                    (
+                        type  =  reset
+                        displayname  =  "Reset Form"
+                    )
+                }
+                on edit
+                {
+                    Update
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Cancel
+                    (
+                        type  =  cancel
+                        displayname  =  "Close Form"
+                    )
+                }
+            }
+        }
+
+        list  office_View
+        {
+            displayname = "office View"
+            show  all  rows  from  office 
+            (
+                Name
+                notes
+            )
+        }
+
+        summary  office_Summary1
+        {
+            displayname = "office Summary"
+            show  all  rows  from  office 
+            (
+                Name
+                fax
+                notes
+                address
+                id_dabble
+            )
+        }
+
+    }
+
+    section batch
+    {
+        form  batch
+        {
+            field alignment = left
+            
+            Name
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            actions
+            {
+                on add
+                {
+                    Submit
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Reset
+                    (
+                        type  =  reset
+                        displayname  =  "Reset Form"
+                    )
+                }
+                on edit
+                {
+                    Update
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Cancel
+                    (
+                        type  =  cancel
+                        displayname  =  "Close Form"
+                    )
+                }
+            }
+        }
+
+        list  batch_View
+        {
+            displayname = "batch View"
+            show  all  rows  from  batch 
+            (
+                Name
+            )
+        }
+
+    }
+
+    section session
+    {
+        form  session
+        {
+            field alignment = left
+            
+            id_dabble
+            (
+                type  =  number
+                private  =  true
+                width  =  100px
+            )
+
+            date_field
+            (
+                displayname  =  "date"
+                type  =  date
+                width  =  130px
+            )
+
+            Time
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            Month
+            (
+                type  =  formula
+                value  =  date_field.getMonth()
+            )
+
+            must  have  Group
+            (
+                type  =  picklist
+                values  =  group.ID
+                displayformat = [ Name ]
+                allow new entries = true
+                [
+                    displayname = "group"
+                ]
+                width  =  206px
+            )
+
+            group_dabble
+            (
+                type  =  number
+                private  =  true
+                width  =  100px
+            )
+
+            Therapist
+            (
+                type  =  picklist
+                values  =  {"Ratliff, Dr. Bascom",   "Maxey, Debra",   "Woody",   "Clemmons, Tamara",   "Hall, Jon",   "Amy",   "Mary C",   "Yang, Ann",   "Lowe, Kelly",   "Fry, Tori",   "Jackson, Cherlisa",   "Hardy, Lauren",   "Delhanty, Will",   "Jessi Lefholz",   "Shelton, Danyele",   "Christa",   "Delehanty, Will",   "Casey, Meghan",   "Lynda Falley",   "Parrett, Shelley",   "Kathryn Dawn",   "Foxworthy, Brian",   "Porter, Pamela",   "McLemore, Alicia",   "Hammond, Chelsea",   "April Craig",   "Susan"}
+                width  =  206px
+            )
+
+            actions
+            {
+                on add
+                {
+                    Submit
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Reset
+                    (
+                        type  =  reset
+                        displayname  =  "Reset Form"
+                    )
+                }
+                on edit
+                {
+                    Update
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Cancel
+                    (
+                        type  =  cancel
+                        displayname  =  "Close Form"
+                    )
+                }
+            }
+        }
+
+        list  session_View
+        {
+            displayname = "session View"
+            show  all  rows  from  session 
+            (
+                date_field as "date"
+                id_dabble as "idx"
+                Therapist
+                Time
+            )
+        }
+
+        summary  session_Summary
+        {
+            displayname = "session Summary"
+            show  all  rows  from  session 
+            (
+                date_field as "date"
+                id_dabble
+                Therapist
+                Time
+                Month
+                Group
+                group_dabble
+            )
+            filters 
+            (
+                date_field
+                Therapist
+            )
+        }
+
+    }
+
+    section Reports
+    {
+        report Officers_test
+        {
+            displayname = "Officers test"
+            type = PivotTable
+            based on officer_View
+        }
+
+        report Officers_test_2
+        {
+            displayname = "Officers test 2"
+            type = PivotTable
+            based on officer_View
+        }
+
+        list  Officer_print_test
+        {
+            displayname = "Officer print test"
+            show  all  rows  from  officer 
+            (
+                Name
+                email
+                office
+                (
+                    view = office_Summary1
+                )
+            )
+        }
+
+        htmlpage HTML_PDF_Test()
+displayname = "HTML PDF Test"
+content
+        <%{
+        }%>
+
+    }
+
+    customize
+    {
+        layout = "tab"
+        base theme = "headerimage"
+        color = "light green"
+    }
+    reports configuration
+    {
+        Version = 1251000015512031
+        Key     = "fmD46y2Z0fg633Fky70ChSyUep7ts2bhmy1FRd0HtVNzmwZOBKFrWbjj0R6Jp7wqz2StdWtwTT0rqV3GwxN97YyCt14Q4PbRGVPW"
+    }
+}
