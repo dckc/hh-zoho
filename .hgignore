@@ -1,6 +1,7 @@
 syntax: glob
 
 *~
+,*
 
 Dabble-2011-05-11-024407/*.csv
 hh-dabbles-screenshots/*.png
