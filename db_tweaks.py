@@ -28,9 +28,9 @@ def import_csv(trx, fn, table, colsize=500):
 def _create_ddl(table, colnames, colsize):
     '''
     >>> _create_ddl('item', ('id', 'size', 'price'), 50)
-    'create table item ("id" varchar2(50), "size" varchar2(50), "price" varchar2(50))'
+    'create table "item" ("id" varchar2(50), "size" varchar2(50), "price" varchar2(50))'
     '''
-    return 'create table %s (%s)' % (
+    return 'create table "%s" (%s)' % (
         table, ', '.join(['"%s" varchar2(%d)' % (n, colsize)
                           for n in colnames]))
 
@@ -38,9 +38,9 @@ def _create_ddl(table, colnames, colsize):
 def _insert_dml(table, colnames):
     '''
     >>> _insert_dml('item', ('id', 'size', 'price'))
-    'insert into item ("id", "size", "price") values (:id, :size, :price)'
+    'insert into "item" ("id", "size", "price") values (:id, :size, :price)'
     '''
-    return 'insert into %s (%s) values (%s)' %(
+    return 'insert into "%s" (%s) values (%s)' %(
         table,
         ', '.join(['"%s"' % n for n in colnames]),
         ', '.join([':' + n
