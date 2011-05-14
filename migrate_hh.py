@@ -115,6 +115,9 @@ class ZohoAPI(object):
         for row in rows:
             e_add = sub(e_form, 'add')
             for n in columns:
+                # watch out for:
+                # File "apihelpers.pxi", line 1242, in lxml.etree._utf8 (src/lxml/lxml.etree.c:19848)
+                # ValueError: All strings must be XML compatible: Unicode or ASCII, no NULL bytes
                 sub(sub(e_add, 'field', name=n), 'value').text = row[n]
         print >> sys.stderr, 'add...', form, columns, rows[0]
         #print >>sys.stderr, etree.tostring(e, pretty_print=True)
@@ -175,12 +178,11 @@ class HH_Zoho(ZohoAPI):
         ZohoAPI.__init__(self, login_id, password_cb)
 
     def load_all(self):
+        self.load_offices()
+        self.load_officers()
+        self.load_clients()
         self.load_groups()
-        self.load_sessions()
-        #self.load_offices()
-        #self.load_officers()
-        #clients
-        #visits
+        #Todo: load sessions and visits using .xls or .csv format?
 
     def load_groups(self, basename="Group.csv"):
         def fixup(tr):
@@ -214,43 +216,44 @@ class HH_Zoho(ZohoAPI):
 
     def load_offices(self, basename="Office.csv"):
         def fixup(tr):
-            return [dict(rec, id_dabble=rec['ID'])
+            return [dict(rec, id_dabble=rec['ID'],
+                         address=rec['address'].replace('\x0b', ''))
                     for rec in tr]
 
-        self._load_table(basename, 'group',
+        self._load_table(basename, 'office',
                          ('Name', 'fax', 'notes', 'address', 'id_dabble'),
                          fixup, self._office)
 
     def load_officers(self, basename="Officer.csv"):
         def fixup(tr):
             return [dict(rec, id_dabble=rec['ID'],
-                         office=(rec['office'] and  # skip blank office
-                                 self._office[rec['office']]))
+                         office=self._office.get(rec['office'], ''))
                     for rec in tr
                     if rec['Name']]
 
         self._load_table(basename, 'officer',
                          ('Name', "email", "office", "id_dabble"),
-                         fixup, self._office)
+                         fixup, self._officer)
 
-    def load_clients(self, basename="Session.csv"):
+    def load_clients(self, basename="Client.csv"):
         def fixup(tr):
             return [dict(rec, id_dabble=rec['ID'],
-                         officer=self._officer[rec['officer']])
+                         Officer=self._officer.get(rec['officer'], ''))
                     for rec in tr]
 
         self._load_table(basename, 'client',
                          ("Name", "Ins", "Approval", "DX", "Note",
-                               "officer", "DOB", "address", "phone",
-                               "batch", "id_dabble"),
-                         fixup, self._office)
+                          "Officer", "DOB", "address", "phone",
+                          "batch", "id_dabble"),
+                         fixup, self._client)
 
     def load_sessions(self, basename="Session.csv"):
         def fixup(tr):
             return [dict(rec, id_dabble=rec['ID'],
                          Group=self._group.get(rec['group'], ''),
                          date_field=rec['date'])
-                    for rec in tr]
+                    for rec in tr
+                    if rec['group'] and rec['date']]
 
         self._load_table(basename, 'session',
                          ("date_field", "Group", "Time", "Therapist",
