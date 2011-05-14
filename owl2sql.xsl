@@ -67,6 +67,10 @@
 	  <xsl:text> DATE</xsl:text>
 	</xsl:when>
 
+	<xsl:when test='$fType = "decimal"'>
+	  <xsl:text> NUMBER</xsl:text>
+	</xsl:when>
+
 	<xsl:otherwise>
 	  <xsl:message>
 	    @@unknown type: <xsl:value-of select='$fType'/>

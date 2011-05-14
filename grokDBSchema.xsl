@@ -23,6 +23,9 @@
   <xsl:variable name="Date"
 		select='"http://www.w3.org/2001/XMLSchema#date"'/>
 
+  <xsl:variable name="Decimal"
+		select='"http://www.w3.org/2001/XMLSchema#decimal"'/>
+
 
   <xsl:template match="/">
     <r:RDF>
@@ -75,6 +78,9 @@
 			</xsl:when>
 			<xsl:when test='$fType = "date"'>
 			  <s:range r:resource="{$Date}" />
+			</xsl:when>
+			<xsl:when test='$fType = "decimal"'>
+			  <s:range r:resource="{$Decimal}" />
 			</xsl:when>
 			<xsl:otherwise>
 			  <xsl:message>

@@ -27,12 +27,17 @@
  </tr>
  <tr>
   <td></td>
+  <td>name</td>
+  <td>text</td>
+ </tr>
+ <tr>
+  <td></td>
   <td>fax</td>
   <td>text</td>
  </tr>
  <tr>
   <td></td>
-  <td>name</td>
+  <td>address</td>
   <td>text</td>
  </tr>
  <tr>
@@ -41,6 +46,7 @@
   <td>text</td>
  </tr>
 </tbody>
+
 <tbody>
  <tr>
   <td>officers</td>
@@ -54,16 +60,30 @@
  </tr>
  <tr>
   <td></td>
+  <td>email</td>
+  <td>text</td>
+ </tr>
+ <tr>
+  <td></td>
   <td>office</td>
   <td>int</td>
   <td>offices</td>
  </tr>
+</tbody>
+
+<tbody>
+ <tr>
+  <td>batches</td>
+  <td>id</td>
+  <td>int</td>
+ </tr>
  <tr>
   <td></td>
-  <td>email</td>
+  <td>name</td>
   <td>text</td>
  </tr>
 </tbody>
+
 <tbody>
  <tr>
   <td>clients</td>
@@ -72,22 +92,17 @@
  </tr>
  <tr>
   <td></td>
-  <td>Name</td>
+  <td>name</td>
   <td>text</td>
  </tr>
  <tr>
   <td></td>
-  <td>rate</td>
+  <td>ins</td>
   <td>text</td>
  </tr>
  <tr>
   <td></td>
-  <td>Ins</td>
-  <td>text</td>
- </tr>
- <tr>
-  <td></td>
-  <td>Approval</td>
+  <td>approval</td>
   <td>text</td>
  </tr>
  <tr>
@@ -97,21 +112,38 @@
  </tr>
  <tr>
   <td></td>
-  <td>Note</td>
+  <td>note</td>
   <td>text</td>
  </tr>
  <tr>
   <td></td>
-  <td>Discharged</td>
-  <td>text</td>
- </tr>
- <tr>
-  <td></td>
-  <td>officer_id</td>
+  <td>officer</td>
   <td>int</td>
   <td>officers</td>
  </tr>
+ <tr>
+  <td></td>
+  <td>DOB</td>
+  <td>date</td>
+ </tr>
+ <tr>
+  <td></td>
+  <td>address</td>
+  <td>text</td>
+ </tr>
+ <tr>
+  <td></td>
+  <td>phone</td>
+  <td>text</td>
+ </tr>
+ <tr>
+  <td></td>
+  <td>batch</td>
+  <td>int</td>
+  <td>batches</td>
+ </tr>
 </tbody>
+
 <tbody>
  <tr>
   <td>groups</td>
@@ -123,12 +155,31 @@
   <td>name</td>
   <td>text</td>
  </tr>
+ <tr>
+  <td></td>
+  <td>rate</td>
+  <td>decimal</td>
+ </tr>
+
+ <tr>
+  <td></td>
+  <td>Eval</td>
+  <td>int</td>
+  <td></td>
+  <td>should be boolean</td>
+ </tr>
 </tbody>
+
 <tbody>
  <tr>
   <td>sessions</td>
   <td>id</td>
   <td>int</td>
+ </tr>
+ <tr>
+  <td></td>
+  <td>date</td>
+  <td>date</td>
  </tr>
  <tr>
   <td></td>
@@ -138,36 +189,25 @@
  </tr>
  <tr>
   <td></td>
-  <td>date</td>
-  <td>date</td>
+  <td>time</td>
+  <td>text</td>
+  <td></td>
+  <td>should be time interval</td>
+ </tr>
+ <tr>
+  <td></td>
+  <td>therapist</td>
+  <td>text</td>
+  <td></td>
+  <td>normalize?</td>
  </tr>
 </tbody>
+
 <tbody>
  <tr>
   <td>visits</td>
   <td>id</td>
   <td>int</td>
- </tr>
- <tr>
-  <td></td>
-  <td>Attend</td>
-  <td>text</td>
- </tr>
- <tr>
-  <td></td>
-  <td>Payment</td>
-  <td>text</td>
- </tr>
- <tr>
-  <td></td>
-  <td>Note</td>
-  <td>text</td>
- </tr>
- <tr>
-  <td></td>
-  <td>who</td>
-  <td>int</td>
-  <td>clients</td>
  </tr>
  <tr>
   <td></td>
@@ -177,18 +217,41 @@
  </tr>
  <tr>
   <td></td>
-  <td>Billed</td>
+  <td>client</td>
+  <td>int</td>
+  <td>clients</td>
+ </tr>
+ <tr>
+  <td></td>
+  <td>attend</td>
+  <td>int</td>
+  <td></td>
+  <td>boolean, really</td>
+ </tr>
+ <tr>
+  <td></td>
+  <td>client_pd</td>
+  <td>decimal</td>
+ </tr>
+ <tr>
+  <td></td>
+  <td>note</td>
   <td>text</td>
  </tr>
  <tr>
   <td></td>
-  <td>Paid</td>
-  <td>text</td>
+  <td>bill_date</td>
+  <td>date</td>
  </tr>
  <tr>
   <td></td>
-  <td>Ins_Paid</td>
-  <td>text</td>
+  <td>check_date</td>
+  <td>date</td>
+ </tr>
+ <tr>
+  <td></td>
+  <td>ins_paid</td>
+  <td>decimal</td>
  </tr>
 </tbody>
 </table>
