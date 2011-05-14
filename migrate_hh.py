@@ -17,7 +17,7 @@ from lxml import etree
 
 def main(argv):
     db, bak = argv[1:3]
-    import_all_csv(db, bak)
+    prepare_db(db, bak)
 
 def main_zoho(argv):
     username, backup_dir = argv[1:3]
@@ -34,14 +34,21 @@ def main_zoho(argv):
     hz.load_all()
 
 
-def import_all_csv(db, bak):
+def prepare_db(db, bak, init='hh_data.sql', fixup='hh_fixup.sql'):
     conn = sqlite3.connect(db)
+
+    print >> sys.stderr, 'running script:', init
+    conn.executescript(open(init).read())
+
     for table in ('Batch', 'Office', 'Progressnote',
                   'Client', 'Group', 'Officer',
                   'Session', 'Visit'):
         with transaction(conn) as work:
             print >> sys.stderr, "importing: ", table
             import_csv(work, os.path.join(bak, '%s.csv' % table), table)
+
+    print >> sys.stderr, 'running script:', fixup
+    conn.executescript(open(fixup).read())
 
 
 class ZohoAPI(object):

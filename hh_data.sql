@@ -37,7 +37,7 @@ CREATE TABLE groups (
 CREATE TABLE sessions (
   id INTEGER PRIMARY KEY 
  ,   date DATE 
- ,   group INTEGER 
+ ,   group_id INTEGER 
  ,   time TEXT 
  ,   therapist TEXT 
  );
