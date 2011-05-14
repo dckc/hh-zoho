@@ -1,6 +1,6 @@
 /*
  * Author       : hopeharbor
- * Generated on : 11-May-2011 22:45:22
+ * Generated on : 14-May-2011 15:30:49
  * Version      : 3.0
  */
 application "Hope Harbor"
@@ -126,7 +126,7 @@ application "Hope Harbor"
             (
                 type  =  picklist
                 values  =  session.ID
-                displayformat = [ date_field ]
+                displayformat = [ Name + " on " + date_field ]
                 allow new entries = true
                 [
                     displayname = "Add session"
@@ -149,7 +149,7 @@ application "Hope Harbor"
             Attend
             (
                 type  =  checkbox
-                defaultvalue  =  false
+                defaultvalue  =  true
             )
 
             client_pd
@@ -228,20 +228,14 @@ application "Hope Harbor"
             displayname = "visit View"
             show  all  rows  from  visit 
             (
-                session.date_field as "Session Date"
-                session.Group
-                client
-                (
-                    view = client_Summary1
-                )
+                session.date_field as "Date"
+                session.Name as "Group"
+                client as "Client"
                 note
                 client_pd as "client pd"
-                bill_date as "bill date"
+                bill_date as "Bill Date"
                 ins_paid as "ins paid $"
-                check_date as "check date"
-                session
-                id_dabble as "filemaker_key"
-                client.Name as "Client Name"
+                check_date as "Check Date"
             )
         }
 
@@ -321,6 +315,10 @@ application "Hope Harbor"
                 Name
                 rate
             )
+            sort by
+            (
+                Name   ascending
+            )
         }
 
     }
@@ -373,6 +371,12 @@ application "Hope Harbor"
                 ]
                 sortorder  =  ascending
                 width  =  206px
+            )
+
+            batch
+            (
+                type  =  number
+                width  =  100px
             )
 
             id_dabble
@@ -464,6 +468,7 @@ application "Hope Harbor"
                 DOB
                 Officer
                 id_dabble
+                batch
             )
             filters 
             (
@@ -773,6 +778,13 @@ content
                 width  =  206px
             )
 
+            id_dabble
+            (
+                type  =  number
+                private  =  true
+                width  =  100px
+            )
+
             actions
             {
                 on add
@@ -845,6 +857,7 @@ content
                 Name
                 email
                 office
+                id_dabble
             )
         }
 
@@ -925,6 +938,7 @@ content
             show  all  rows  from  office 
             (
                 Name
+                fax
                 notes
             )
         }
@@ -936,9 +950,8 @@ content
             (
                 Name
                 fax
-                notes
                 address
-                id_dabble
+                notes
             )
         }
 
@@ -1045,14 +1058,7 @@ content
             Name
             (
                 type  =  formula
-                value  =  (Group.toString()) + date_field.toString()
-            )
-
-            group_dabble
-            (
-                type  =  number
-                private  =  true
-                width  =  100px
+                value  =  thisapp.session_group(ID)
             )
 
             Therapist
@@ -1099,10 +1105,14 @@ content
             show  all  rows  from  session 
             (
                 Group.Eval
+                Name
                 date_field as "Date"
-                Group.Name
                 Time
                 Therapist
+            )
+            sort by
+            (
+                date_field   descending
             )
             options
             (
@@ -1121,7 +1131,6 @@ content
                 Time
                 Month
                 Group
-                group_dabble
                 Name
             )
             filters 
@@ -1218,6 +1227,17 @@ content
 </tbody>
 </table>
         <%}%>
+
+    }
+
+    functions
+    {
+        string session_group(int sid)
+        {
+            s  =  session  [ID == input.sid];
+            g  =  group  [ID = s.Group];
+            return g.Name;
+        }
 
     }
 
