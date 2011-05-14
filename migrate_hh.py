@@ -16,6 +16,10 @@ from lxml import etree
 
 
 def main(argv):
+    db, bak = argv[1:3]
+    import_all_csv(db, bak)
+
+def main_zoho(argv):
     username, backup_dir = argv[1:3]
 
     def pw_cb():
@@ -30,12 +34,14 @@ def main(argv):
     hz.load_all()
 
 
-def main_import_csv(argv):
-    db, fn = argv[1:3]
-    table = os.path.basename(fn)[:-len(".csv")]
+def import_all_csv(db, bak):
     conn = sqlite3.connect(db)
-    with transaction(conn) as work:
-        import_csv(work, fn, table)
+    for table in ('Batch', 'Office', 'Progressnote',
+                  'Client', 'Group', 'Officer',
+                  'Session', 'Visit'):
+        with transaction(conn) as work:
+            print >> sys.stderr, "importing: ", table
+            import_csv(work, os.path.join(bak, '%s.csv' % table), table)
 
 
 class ZohoAPI(object):
@@ -247,15 +253,6 @@ class HH_Zoho(ZohoAPI):
                          fixup, self._office)
 
 
-def csv_d2z(dirpath, basename, columns_out):
-    dr = csv.DictReader(open(os.path.join(dirpath, basename)))
-    columns_in = dr.next()
-    bufwr = StringIO.StringIO()
-    dw = csv.DictWriter(bufwr, columns_out, extrasaction='ignore')
-    dw.writerow(dict(zip(columns_out, columns_out)))
-    return dr, dw, bufwr
-
-
 def import_csv(trx, fn, table, colsize=500):
     '''Import data from a comma-separated file into a table.
 
@@ -266,7 +263,8 @@ def import_csv(trx, fn, table, colsize=500):
                 for n in rows.next()]
     trx.execute(_create_ddl(table, colnames, colsize))
     trx.executemany(_insert_dml(table, colnames),
-                    [dict(zip(colnames, row))
+                    [dict(zip(colnames,
+                              [cell.decode('utf-8') for cell in row]))
                      for row in rows])
 
 
