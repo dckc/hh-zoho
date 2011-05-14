@@ -17,18 +17,18 @@ from lxml import etree
 
 def main(argv):
     username, backup_dir = argv[1:3]
+
     def pw_cb():
         return getpass.getpass('Password for %s: ' % username)
 
     hz = HH_Zoho(username, pw_cb, backup_dir)
 
     # This worked to test API key/ticket usage.
-    #print json.dumps(hz.form_fields(hz.app, 'group'), sort_keys=True, indent=4)
+    #print json.dumps(hz.form_fields(hz.app, 'group'),
+    # sort_keys=True, indent=4)
 
-    # but I'm getting an HTTP 500 error when I try delete.
-    print hz.load_groups()
-    pprint.pprint(hz._group)
-    #hz.load_all()
+    hz.load_all()
+
 
 def main_import_csv(argv):
     db, fn = argv[1:3]
@@ -57,7 +57,7 @@ class ZohoAPI(object):
                       'FROM_AGENT': 'true',
                       'servicename': servicename,
                       'submit': 'Generate Ticket'}
-            print >>sys.stderr, 'getting ticket...'
+            print >> sys.stderr, 'getting ticket...'
             ans = urlopen(api_addr, urlencode(params))
             body = ans.read()
             open(ticket_file, "w").write(body)
@@ -73,14 +73,13 @@ class ZohoAPI(object):
 
     def form_fields(self, app, form,
                     url='http://creator.zoho.com/api/%(format)s/%(applicationName)s/%(formName)s/fields/apikey=%(apikey)s&ticket=%(ticket)s'):
-        print >>sys.stderr, 'getting form fields...'
+        print >> sys.stderr, 'getting form fields...'
         ans = urlopen(url % dict(format='json',
                                  applicationName=app,
                                  formName=form,
                                  apikey=self._apikey,
                                  ticket=self._ticket))
         return json.loads(ans.read())
-
 
     def add_records(self, app, form, columns, rows,
                     url='http://creator.zoho.com/api/xml/write'):
@@ -92,7 +91,7 @@ class ZohoAPI(object):
             e_add = sub(e_form, 'add')
             for n in columns:
                 sub(sub(e_add, 'field', name=n), 'value').text = row[n]
-        print >>sys.stderr, 'add...'
+        print >> sys.stderr, 'add...'
         #print >>sys.stderr, etree.tostring(e, pretty_print=True)
         ans = urlopen(url,
                       urlencode(dict(apikey=self._apikey,
@@ -100,22 +99,19 @@ class ZohoAPI(object):
                                      XMLString=etree.tostring(e))))
         return etree.parse(ans)
 
-        
     def csv_write(self, app, form, data,
                   url='http://creator.zoho.com/api/csv/write'):
-        print >>sys.stderr, 'api/csv/write...'
+        print >> sys.stderr, 'api/csv/write...'
         ans = urlopen(url,
                       urlencode(dict(apikey=self._apikey,
                                      ticket=self._ticket,
                                      applicationName=app,
-                                     CSVString=(("%s,%s,Add\n" %(app, form))
+                                     CSVString=(("%s,%s,Add\n" % (app, form))
                                                 + data))))
         return ans.read().split('<br>')
 
-
     def delete(self, app, form, criteria, reloperator,
-                   url='http://creator.zoho.com/api/xml/write'
-                   ):
+                   url='http://creator.zoho.com/api/xml/write'):
         e = etree.Element('ZohoCreator')
         sub = etree.SubElement
         e_app = sub(sub(e, 'applicationlist'), 'application', name=app)
@@ -127,7 +123,7 @@ class ZohoAPI(object):
                 sub(e_crit, 'reloperator').text = reloperator
             sub(e_crit, 'field', name=n, compOperator=op, value=v)
 
-        print >>sys.stderr, 'delete...'
+        print >> sys.stderr, 'delete...'
         ans = urlopen(url,
                      urlencode(dict(apikey=self._apikey,
                                     ticket=self._ticket,
@@ -149,21 +145,30 @@ class HH_Zoho(ZohoAPI):
 
     def load_all(self):
         self.load_groups()
-        self.load_offices()
-        self.load_officers()
+        self.load_sessions()
+        #self.load_offices()
+        #self.load_officers()
+        #clients
+        #visits
 
     def load_groups(self, basename="Group.csv"):
-        self.truncate('group')
-        tr = self._csv_reader(basename)
+        def fixup(tr):
+            return [dict(rec, id_dabble=rec['ID'],
+                         # "USD $20" => "20"
+                         rate=rec['rate'][len('USD $'):])
+                    for rec in tr]
 
-        rows = [dict(rec, id_dabble=rec['ID'],
-                     # "USD $20" => "20"
-                     rate=rec['rate'][len('USD $'):])
-                for rec in tr]
-        doc = self.add_records(self.app, 'group',
-                               ('Name', 'rate', 'Eval', 'id_dabble'),
-                               rows)
-        idmap = self._group
+        self._load_table(basename, 'group',
+                         ('Name', 'rate', 'Eval', 'id_dabble'),
+                         fixup, self._group)
+
+    def _load_table(self, basename, form, columns_out, fixup, idmap):
+        tr = self._csv_reader(basename)
+        tr.next()
+        self.truncate(form)
+
+        doc = self.add_records(self.app, form, columns_out, fixup(tr))
+
         for e_vals in doc.xpath('//response/result/form'
                                 '/add[status/text()="Success"]/values'):
             id_zoho = e_vals.xpath('field[@name="ID"]/value/text()')[0]
@@ -178,17 +183,17 @@ class HH_Zoho(ZohoAPI):
         print >> sys.stderr, "data for: ", form
         print >> sys.stderr, data
         lines = self.csv_write(self.app, form, data)
-        print >>sys.stderr, lines
+        print >> sys.stderr, lines
         # Success,[ID = 765721000000034047 , ... id_dabble = 109653 , rate = 20]
         for l in lines:
             if l.startswith("Success,"):
                 m = re.search(r'\[ID = (\d+) ,', l)
                 if not m:
-                    raise ValueError, l
+                    raise ValueError(l)
                 ID = m.group(1)
                 m = re.search(r'id_dabble = (\d+) ,', l)
                 if not m:
-                    raise ValueError, l
+                    raise ValueError(l)
                 id_dabble = m.group(1)
                 idmap[id_dabble] = ID
         print >> sys.stderr, "map for", form
@@ -199,45 +204,48 @@ class HH_Zoho(ZohoAPI):
                            [('ID', 'GreaterThan', '0')], 'AND')
 
     def load_offices(self, basename="Office.csv"):
-        tr, tw, bufwr = csv_d2z(self._dir, basename,
-                                ['Name', 'fax', 'notes', 'address',
-                                 'id_dabble'])
-        for rec in tr:
-            tw.writerow(dict(rec, id_dabble=rec['ID'],
-                             # Zoho can't handle newlines in CSV import :-/
-                             notes=rec['notes'].replace('\n', ' '),
-                             address=rec['address'].replace('\n', ' ')))
-        self._load_records('office', bufwr, self._office)
+        def fixup(tr):
+            return [dict(rec, id_dabble=rec['ID'])
+                    for rec in tr]
+
+        self._load_table(basename, 'group',
+                         ('Name', 'fax', 'notes', 'address', 'id_dabble'),
+                         fixup, self._office)
 
     def load_officers(self, basename="Officer.csv"):
-        tr, tw, buf = csv_d2z(self._dir, basename,
-                              ['Name', "email","office","id_dabble"])
-        for rec in tr:
-            if not rec['Name']:  # bogus record
-                continue
-            tw.writerow(dict(rec, id_dabble=rec['ID'],
-                             office=(rec['office'] and  # skip blank office
-                                     self._office[rec['office']])))
-        self._load_records('officer', buf, self._officer)
+        def fixup(tr):
+            return [dict(rec, id_dabble=rec['ID'],
+                         office=(rec['office'] and  # skip blank office
+                                 self._office[rec['office']]))
+                    for rec in tr
+                    if rec['Name']]
+
+        self._load_table(basename, 'officer',
+                         ('Name', "email", "office", "id_dabble"),
+                         fixup, self._office)
 
     def load_clients(self, basename="Session.csv"):
-        tr, tw, buf = csv_d2z(self._dir, basename,
-                              ["Name", "Ins", "Approval", "DX", "Note",
+        def fixup(tr):
+            return [dict(rec, id_dabble=rec['ID'],
+                         officer=self._officer[rec['officer']])
+                    for rec in tr]
+
+        self._load_table(basename, 'client',
+                         ("Name", "Ins", "Approval", "DX", "Note",
                                "officer", "DOB", "address", "phone",
-                               "batch", "id_dabble"])
-        for rec in tr:
-            tw.writerow(dict(rec, id_dabble=rec['ID'],
-                             officer=self._officer[rec['officer']]))
-        self._load_records('client', buf, self._client)
+                               "batch", "id_dabble"),
+                         fixup, self._office)
 
     def load_sessions(self, basename="Session.csv"):
-        tr, tw, buf = csv_d2z(self._dir, basename,
-                              ["date","group","Time","Therapist"])
-        for rec in tr:
-            tw.writerow(dict(rec, id_dabble=rec['ID'],
-                             group=self._group(rec['group'])))
-        self._load_records('session', buf, self._session)
-        
+        def fixup(tr):
+            return [dict(rec, id_dabble=rec['ID'],
+                         group=self._group.get(rec['group'], ''))
+                    for rec in tr]
+
+        self._load_table(basename, 'session',
+                         ("date", "group", "Time", "Therapist"),
+                         fixup, self._office)
+
 
 def csv_d2z(dirpath, basename, columns_out):
     dr = csv.DictReader(open(os.path.join(dirpath, basename)))
@@ -261,6 +269,7 @@ def import_csv(trx, fn, table, colsize=500):
                     [dict(zip(colnames, row))
                      for row in rows])
 
+
 def _create_ddl(table, colnames, colsize):
     '''
     >>> _create_ddl('item', ('id', 'size', 'price'), 50)
@@ -276,12 +285,12 @@ def _insert_dml(table, colnames):
     >>> _insert_dml('item', ('id', 'size', 'price'))
     'insert into "item" ("id", "size", "price") values (:id, :size, :price)'
     '''
-    return 'insert into "%s" (%s) values (%s)' %(
+    return 'insert into "%s" (%s) values (%s)' % (
         table,
         ', '.join(['"%s"' % n for n in colnames]),
         ', '.join([':' + n
                    for n in colnames]))
-                                               
+
 
 @contextmanager
 def transaction(conn):
