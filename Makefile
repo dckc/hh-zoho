@@ -1,37 +1,16 @@
-# $Id: Makefile 54 2004-09-05 02:14:00Z connolly $
+# Convert database schema from HTML to SQL via OWL
 
 MKDIR=mkdir
-GREP=grep
 
 XSLTPROC=xsltproc
 PYTHON=python
-TWISTD=twistd
-EPYDOC=epydoc
-NEVOW=/home/connolly/src/Nevow
 
-run: testchiro-db
-	PYTHONPATH=$(NEVOW) $(TWISTD) -noy bottleapp.tac
+hh_data.sql: hh_data.owl owl2sql.xsl
+	$(XSLTPROC) --novalid -o $@ owl2sql.xsl hh_data.owl
 
-testchiro-db: loadTables.py bottlesDB.sql testclinic.html
-	$(PYTHON) loadTables.py testchiro-db bottlesDB.sql testclinic.html
-
-
-bottlesDB.sql: bottlesDB.owl owl2sql.xsl
-	$(XSLTPROC) --novalid -o $@ owl2sql.xsl bottlesDB.owl
-
-bottlesDB.owl: bottlesDB.html grokDBSchema.xsl
-	$(XSLTPROC) --novalid -o $@ grokDBSchema.xsl bottlesDB.html
-
-MODULES=bottlesmarts.py loadTables.py
-#@@hmm... what about bottleapp.tac ?
-
-epydoc: $(MODULES)
-	$(MKDIR) -p srcdoc
-	PYTHONPATH=$(NEVOW) $(EPYDOC) --output srcdoc $(MODULES)
-
-lookie:
-	$(GREP) @@ *.py *.html *.tac
+hh_data.owl: hh_data.html grokDBSchema.xsl
+	$(XSLTPROC) --novalid -o $@ grokDBSchema.xsl hh_data.html
 
 clean:
-	$(RM) *.pyc testchiro-db bottlesDB.owl bottlesDB.sql *~
+	$(RM) *~ *.pyc testchiro-db hh_data.owl hh_data.sql
 
