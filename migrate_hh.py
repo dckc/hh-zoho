@@ -15,21 +15,17 @@ import sys
 from lxml import etree
 
 
-def main(argv):
+def main_db(argv):
     db, bak = argv[1:3]
     prepare_db(db, bak)
 
-def main_zoho(argv):
+def main(argv):
     username, backup_dir = argv[1:3]
 
     def pw_cb():
         return getpass.getpass('Password for %s: ' % username)
 
     hz = HH_Zoho(username, pw_cb, backup_dir)
-
-    # This worked to test API key/ticket usage.
-    #print json.dumps(hz.form_fields(hz.app, 'group'),
-    # sort_keys=True, indent=4)
 
     hz.load_all()
 
@@ -86,6 +82,10 @@ class ZohoAPI(object):
 
     def form_fields(self, app, form,
                     url='http://creator.zoho.com/api/%(format)s/%(applicationName)s/%(formName)s/fields/apikey=%(apikey)s&ticket=%(ticket)s'):
+        # This worked to test API key/ticket usage.
+        # print json.dumps(hz.form_fields(hz.app, 'group'),
+        #                  sort_keys=True, indent=4)
+
         print >> sys.stderr, 'getting form fields...'
         ans = urlopen(url % dict(format='json',
                                  applicationName=app,
@@ -94,7 +94,19 @@ class ZohoAPI(object):
                                  ticket=self._ticket))
         return json.loads(ans.read())
 
-    def add_records(self, app, form, columns, rows,
+    def add_records(self, app, form, columns, rows, chunk_size=200):
+        done = 0
+        out = []
+        while done < len(rows):
+            print >> sys.stderr, '%s: %d of %d' % (form, done, len(rows))
+            chunk = self._add_records(app, form, columns,
+                                      rows[done:done + chunk_size])
+            print >> sys.stderr, 'added %d in %s.' % (len(chunk), form)
+            out.extend(chunk)
+            done += chunk_size
+        return out
+
+    def _add_records(self, app, form, columns, rows,
                     url='http://creator.zoho.com/api/xml/write'):
         e = etree.Element('ZohoCreator')
         sub = etree.SubElement
@@ -104,13 +116,19 @@ class ZohoAPI(object):
             e_add = sub(e_form, 'add')
             for n in columns:
                 sub(sub(e_add, 'field', name=n), 'value').text = row[n]
-        print >> sys.stderr, 'add...'
+        print >> sys.stderr, 'add...', form, columns, rows[0]
         #print >>sys.stderr, etree.tostring(e, pretty_print=True)
         ans = urlopen(url,
                       urlencode(dict(apikey=self._apikey,
                                      ticket=self._ticket,
                                      XMLString=etree.tostring(e))))
-        return etree.parse(ans)
+        doc = etree.parse(ans)
+        #print >> sys.stderr, etree.tostring(doc, pretty_print=True)
+        for err in doc.xpath('//response/result/form'
+                             '/add[status/text() != "Success"]'):
+            print >> sys.stderr, etree.tostring(err, pretty_print=True)
+        return doc.xpath('//response/result/form'
+                         '/add[status/text()="Success"]/values')
 
     def csv_write(self, app, form, data,
                   url='http://creator.zoho.com/api/csv/write'):
@@ -136,7 +154,7 @@ class ZohoAPI(object):
                 sub(e_crit, 'reloperator').text = reloperator
             sub(e_crit, 'field', name=n, compOperator=op, value=v)
 
-        print >> sys.stderr, 'delete...'
+        print >> sys.stderr, 'delete %s...' % form
         ans = urlopen(url,
                      urlencode(dict(apikey=self._apikey,
                                     ticket=self._ticket,
@@ -180,37 +198,15 @@ class HH_Zoho(ZohoAPI):
         tr.next()
         self.truncate(form)
 
-        doc = self.add_records(self.app, form, columns_out, fixup(tr))
+        results = self.add_records(self.app, form, columns_out, fixup(tr))
 
-        for e_vals in doc.xpath('//response/result/form'
-                                '/add[status/text()="Success"]/values'):
+        for e_vals in results:
             id_zoho = e_vals.xpath('field[@name="ID"]/value/text()')[0]
             id_dabble = e_vals.xpath('field[@name="id_dabble"]/value/text()')[0]
             idmap[id_dabble] = id_zoho
 
     def _csv_reader(self, basename):
         return csv.DictReader(open(os.path.join(self._dir, basename)))
-
-    def _load_records(self, form, bufwr, idmap):
-        data = bufwr.getvalue()
-        print >> sys.stderr, "data for: ", form
-        print >> sys.stderr, data
-        lines = self.csv_write(self.app, form, data)
-        print >> sys.stderr, lines
-        # Success,[ID = 765721000000034047 , ... id_dabble = 109653 , rate = 20]
-        for l in lines:
-            if l.startswith("Success,"):
-                m = re.search(r'\[ID = (\d+) ,', l)
-                if not m:
-                    raise ValueError(l)
-                ID = m.group(1)
-                m = re.search(r'id_dabble = (\d+) ,', l)
-                if not m:
-                    raise ValueError(l)
-                id_dabble = m.group(1)
-                idmap[id_dabble] = ID
-        print >> sys.stderr, "map for", form
-        sys.stderr.write(pprint.pformat(idmap))
 
     def truncate(self, form):
         return self.delete(self.app, form,
@@ -252,11 +248,13 @@ class HH_Zoho(ZohoAPI):
     def load_sessions(self, basename="Session.csv"):
         def fixup(tr):
             return [dict(rec, id_dabble=rec['ID'],
-                         group=self._group.get(rec['group'], ''))
+                         Group=self._group.get(rec['group'], ''),
+                         date_field=rec['date'])
                     for rec in tr]
 
         self._load_table(basename, 'session',
-                         ("date", "group", "Time", "Therapist"),
+                         ("date_field", "Group", "Time", "Therapist",
+                          'id_dabble'),
                          fixup, self._office)
 
 
