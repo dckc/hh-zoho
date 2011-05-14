@@ -1,14 +1,18 @@
 
-import sqlite3
-import os
 from contextlib import contextmanager
-import csv
-from urllib2 import urlopen
 from urllib import urlencode
+from urllib2 import urlopen
+import StringIO
+import csv
 import getpass
 import json
-import StringIO
+import os
+import pprint
 import re
+import sqlite3
+import sys
+
+from lxml import etree
 
 
 def main(argv):
@@ -22,10 +26,9 @@ def main(argv):
     #print json.dumps(hz.form_fields(hz.app, 'group'), sort_keys=True, indent=4)
 
     # but I'm getting an HTTP 500 error when I try delete.
-    #hz.truncate('group')
+    print hz.truncate('group')
 
-    hz.load_groups()
-    print json.dumps(hz._group, sort_keys=True, indent=4)
+    #hz.load_all()
 
 def main_import_csv(argv):
     db, fn = argv[1:3]
@@ -54,6 +57,7 @@ class ZohoAPI(object):
                       'FROM_AGENT': 'true',
                       'servicename': servicename,
                       'submit': 'Generate Ticket'}
+            print >>sys.stderr, 'getting ticket...'
             ans = urlopen(api_addr, urlencode(params))
             body = ans.read()
             open(ticket_file, "w").write(body)
@@ -69,6 +73,7 @@ class ZohoAPI(object):
 
     def form_fields(self, app, form,
                     url='http://creator.zoho.com/api/%(format)s/%(applicationName)s/%(formName)s/fields/apikey=%(apikey)s&ticket=%(ticket)s'):
+        print >>sys.stderr, 'getting form fields...'
         ans = urlopen(url % dict(format='json',
                                  applicationName=app,
                                  formName=form,
@@ -79,6 +84,7 @@ class ZohoAPI(object):
 
     def csv_write(self, app, form, data,
                   url='http://creator.zoho.com/api/csv/write'):
+        print >>sys.stderr, 'api/csv/write...'
         ans = urlopen(url,
                       urlencode(dict(apikey=self._apikey,
                                      ticket=self._ticket,
@@ -88,9 +94,32 @@ class ZohoAPI(object):
         return ans.read().split('<br>')
 
 
+    def delete_xml(self, app, form, criteria, reloperator,
+                   url='http://creator.zoho.com/api/xml/write'
+                   ):
+        e = etree.Element('ZohoCreator')
+        sub = etree.SubElement
+        e_app = sub(sub(e, 'applicationlist'), 'application', name=app)
+        e_form = sub(sub(e_app, 'formlist'), 'form', name=form)
+        e_crit = sub(sub(e_form, 'delete'), 'criteria')
+        first = True
+        for n, op, v in criteria:
+            if not first:
+                sub(e_crit, 'reloperator').text = reloperator
+            sub(e_crit, 'field', name=n, compOperator=op, value=v)
+
+        print >>sys.stderr, 'delete...'
+        ans = urlopen(url,
+                     urlencode(dict(apikey=self._apikey,
+                                    ticket=self._ticket,
+                                    XMLString=etree.tostring(e))))
+        return ans.read()
+
+
     def delete(self, app, form, criteria, reloperator,
                url='http://creator.zoho.com/api/%(format)s/%(applicationName)s/%(formName)s/delete/'):
         # shared user mode not supported
+        print >>sys.stderr, 'delete...'
         ans = urlopen(url % {'format': 'json',
                              'applicationName': app,
                              'formName': form},
@@ -111,38 +140,100 @@ class HH_Zoho(ZohoAPI):
     def __init__(self, login_id, password_cb, backup_dir):
         self._dir = backup_dir
         self._group = {}  # id_dabble -> zoho ID
+        self._office = {}
+        self._officer = {}
+        self._client = {}
+        self._session = {}
         ZohoAPI.__init__(self, login_id, password_cb)
 
-    def load_groups(self, basename="Group.csv"):
-        gr = csv.DictReader(open(os.path.join(self._dir, basename)))
-        columns_in = gr.next()
-        bufwr = StringIO.StringIO()
-        columns_out = ['Name', 'rate', 'id_dabble']
-        gw = csv.DictWriter(bufwr, columns_out)
-        gw.writerow(dict(zip(columns_out, columns_out)))
+    def load_all(self):
+        self.load_groups()
+        self.load_offices()
+        self.load_officers()
 
-        for group in gr:
-            gw.writerow(dict(Name=group['Name'],
-                             rate=group['rate'][len('USD $'):],
-                             id_dabble=group['ID']))
+    def load_groups(self, basename="Group.csv"):
+        tr, tw, bufwr = csv_d2z(self._dir, basename,
+                                ['Name', 'rate', 'Eval', 'id_dabble'])
+
+        for rec in tr:
+            tw.writerow(dict(rec, id_dabble=rec['ID'],
+                             # "USD $20" => "20"
+                             rate=rec['rate'][len('USD $'):]))
+        self._load_records('group', bufwr, self._group)
+
+    def _load_records(self, form, bufwr, idmap):
         data = bufwr.getvalue()
-        #print >>sys.stderr, "data:\n", data
-        lines = self.csv_write(self.app, "group", bufwr.getvalue())
+        print >> sys.stderr, "data for: ", form
+        print >> sys.stderr, data
+        lines = self.csv_write(self.app, form, data)
+        print >>sys.stderr, lines
         # Success,[ID = 765721000000034047 , ... id_dabble = 109653 , rate = 20]
         for l in lines:
             if l.startswith("Success,"):
                 m = re.search(r'\[ID = (\d+) ,', l)
                 if not m:
                     raise ValueError, l
-                ID = int(m.group(1))
+                ID = m.group(1)
                 m = re.search(r'id_dabble = (\d+) ,', l)
                 if not m:
                     raise ValueError, l
-                id_dabble = int(m.group(1))
-                self._group[id_dabble] = ID
+                id_dabble = m.group(1)
+                idmap[id_dabble] = ID
+        print >> sys.stderr, "map for", form
+        sys.stderr.write(pprint.pformat(idmap))
 
     def truncate(self, form):
-        self.delete(self.app, form, 'ID > 0', 'AND')
+        return self.delete_xml(self.app, form,
+                               [('ID', 'GreaterThan', '0')], 'AND')
+
+    def load_offices(self, basename="Office.csv"):
+        tr, tw, bufwr = csv_d2z(self._dir, basename,
+                                ['Name', 'fax', 'notes', 'address',
+                                 'id_dabble'])
+        for rec in tr:
+            tw.writerow(dict(rec, id_dabble=rec['ID'],
+                             # Zoho can't handle newlines in CSV import :-/
+                             notes=rec['notes'].replace('\n', ' '),
+                             address=rec['address'].replace('\n', ' ')))
+        self._load_records('office', bufwr, self._office)
+
+    def load_officers(self, basename="Officer.csv"):
+        tr, tw, buf = csv_d2z(self._dir, basename,
+                              ['Name', "email","office","id_dabble"])
+        for rec in tr:
+            if not rec['Name']:  # bogus record
+                continue
+            tw.writerow(dict(rec, id_dabble=rec['ID'],
+                             office=(rec['office'] and  # skip blank office
+                                     self._office[rec['office']])))
+        self._load_records('officer', buf, self._officer)
+
+    def load_clients(self, basename="Session.csv"):
+        tr, tw, buf = csv_d2z(self._dir, basename,
+                              ["Name", "Ins", "Approval", "DX", "Note",
+                               "officer", "DOB", "address", "phone",
+                               "batch", "id_dabble"])
+        for rec in tr:
+            tw.writerow(dict(rec, id_dabble=rec['ID'],
+                             officer=self._officer[rec['officer']]))
+        self._load_records('client', buf, self._client)
+
+    def load_sessions(self, basename="Session.csv"):
+        tr, tw, buf = csv_d2z(self._dir, basename,
+                              ["date","group","Time","Therapist"])
+        for rec in tr:
+            tw.writerow(dict(rec, id_dabble=rec['ID'],
+                             group=self._group(rec['group'])))
+        self._load_records('session', buf, self._session)
+        
+
+def csv_d2z(dirpath, basename, columns_out):
+    dr = csv.DictReader(open(os.path.join(dirpath, basename)))
+    columns_in = dr.next()
+    bufwr = StringIO.StringIO()
+    dw = csv.DictWriter(bufwr, columns_out, extrasaction='ignore')
+    dw.writerow(dict(zip(columns_out, columns_out)))
+    return dr, dw, bufwr
 
 
 def import_csv(trx, fn, table, colsize=500):
