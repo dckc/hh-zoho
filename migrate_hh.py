@@ -27,7 +27,7 @@ def main(argv):
 
     # but I'm getting an HTTP 500 error when I try delete.
     print hz.load_groups()
-
+    pprint.pprint(hz._group)
     #hz.load_all()
 
 def main_import_csv(argv):
@@ -98,7 +98,7 @@ class ZohoAPI(object):
                       urlencode(dict(apikey=self._apikey,
                                      ticket=self._ticket,
                                      XMLString=etree.tostring(e))))
-        return ans.read()
+        return etree.parse(ans)
 
         
     def csv_write(self, app, form, data,
@@ -153,16 +153,22 @@ class HH_Zoho(ZohoAPI):
         self.load_officers()
 
     def load_groups(self, basename="Group.csv"):
-        #@@self.truncate('group')
+        self.truncate('group')
         tr = self._csv_reader(basename)
 
         rows = [dict(rec, id_dabble=rec['ID'],
                      # "USD $20" => "20"
                      rate=rec['rate'][len('USD $'):])
                 for rec in tr]
-        return self.add_records(self.app, 'group',
-                                ('Name', 'rate', 'Eval', 'id_dabble'),
-                                rows)
+        doc = self.add_records(self.app, 'group',
+                               ('Name', 'rate', 'Eval', 'id_dabble'),
+                               rows)
+        idmap = self._group
+        for e_vals in doc.xpath('//response/result/form'
+                                '/add[status/text()="Success"]/values'):
+            id_zoho = e_vals.xpath('field[@name="ID"]/value/text()')[0]
+            id_dabble = e_vals.xpath('field[@name="id_dabble"]/value/text()')[0]
+            idmap[id_dabble] = id_zoho
 
     def _csv_reader(self, basename):
         return csv.DictReader(open(os.path.join(self._dir, basename)))
