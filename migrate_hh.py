@@ -26,7 +26,7 @@ def main(argv):
     #print json.dumps(hz.form_fields(hz.app, 'group'), sort_keys=True, indent=4)
 
     # but I'm getting an HTTP 500 error when I try delete.
-    print hz.truncate('group')
+    print hz.load_groups()
 
     #hz.load_all()
 
@@ -82,6 +82,25 @@ class ZohoAPI(object):
         return json.loads(ans.read())
 
 
+    def add_records(self, app, form, columns, rows,
+                    url='http://creator.zoho.com/api/xml/write'):
+        e = etree.Element('ZohoCreator')
+        sub = etree.SubElement
+        e_app = sub(sub(e, 'applicationlist'), 'application', name=app)
+        e_form = sub(sub(e_app, 'formlist'), 'form', name=form)
+        for row in rows:
+            e_add = sub(e_form, 'add')
+            for n in columns:
+                sub(sub(e_add, 'field', name=n), 'value').text = row[n]
+        print >>sys.stderr, 'add...'
+        #print >>sys.stderr, etree.tostring(e, pretty_print=True)
+        ans = urlopen(url,
+                      urlencode(dict(apikey=self._apikey,
+                                     ticket=self._ticket,
+                                     XMLString=etree.tostring(e))))
+        return ans.read()
+
+        
     def csv_write(self, app, form, data,
                   url='http://creator.zoho.com/api/csv/write'):
         print >>sys.stderr, 'api/csv/write...'
@@ -94,7 +113,7 @@ class ZohoAPI(object):
         return ans.read().split('<br>')
 
 
-    def delete_xml(self, app, form, criteria, reloperator,
+    def delete(self, app, form, criteria, reloperator,
                    url='http://creator.zoho.com/api/xml/write'
                    ):
         e = etree.Element('ZohoCreator')
@@ -116,24 +135,6 @@ class ZohoAPI(object):
         return ans.read()
 
 
-    def delete(self, app, form, criteria, reloperator,
-               url='http://creator.zoho.com/api/%(format)s/%(applicationName)s/%(formName)s/delete/'):
-        # shared user mode not supported
-        print >>sys.stderr, 'delete...'
-        ans = urlopen(url % {'format': 'json',
-                             'applicationName': app,
-                             'formName': form},
-                     urlencode(dict(apikey=self._apikey,
-                                    ticket=self._ticket,
-                                    criteria=criteria,
-                                    reloperator=reloperator)))
-        details = json.loads(ans.read())
-        print >>sys.stderr, "@@delete details", details
-        if details['formname'][0]['operation'][2]['status'] != 'Success':
-            raise ValueError, details
-        return details
-
-
 class HH_Zoho(ZohoAPI):
     app = 'hope-harbor'
 
@@ -152,14 +153,19 @@ class HH_Zoho(ZohoAPI):
         self.load_officers()
 
     def load_groups(self, basename="Group.csv"):
-        tr, tw, bufwr = csv_d2z(self._dir, basename,
-                                ['Name', 'rate', 'Eval', 'id_dabble'])
+        #@@self.truncate('group')
+        tr = self._csv_reader(basename)
 
-        for rec in tr:
-            tw.writerow(dict(rec, id_dabble=rec['ID'],
-                             # "USD $20" => "20"
-                             rate=rec['rate'][len('USD $'):]))
-        self._load_records('group', bufwr, self._group)
+        rows = [dict(rec, id_dabble=rec['ID'],
+                     # "USD $20" => "20"
+                     rate=rec['rate'][len('USD $'):])
+                for rec in tr]
+        return self.add_records(self.app, 'group',
+                                ('Name', 'rate', 'Eval', 'id_dabble'),
+                                rows)
+
+    def _csv_reader(self, basename):
+        return csv.DictReader(open(os.path.join(self._dir, basename)))
 
     def _load_records(self, form, bufwr, idmap):
         data = bufwr.getvalue()
@@ -183,8 +189,8 @@ class HH_Zoho(ZohoAPI):
         sys.stderr.write(pprint.pformat(idmap))
 
     def truncate(self, form):
-        return self.delete_xml(self.app, form,
-                               [('ID', 'GreaterThan', '0')], 'AND')
+        return self.delete(self.app, form,
+                           [('ID', 'GreaterThan', '0')], 'AND')
 
     def load_offices(self, basename="Office.csv"):
         tr, tw, bufwr = csv_d2z(self._dir, basename,
