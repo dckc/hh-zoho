@@ -31,6 +31,10 @@ def main(argv):
 
         hz.load_basics()
 
+    elif '--truncate-clients' in argv:
+        hz = HH_Zoho(None, None, None, None)  # assume we have a ticket
+        hz.truncate('client')
+
     elif '--make-clients-spreadsheet' in argv:
         db, out = argv[2:4]
         make_clients_spreadsheet(db, out)
@@ -285,7 +289,7 @@ def make_clients_spreadsheet(db, out='clients.xls'):
                      from clients c
                      join current_clients cc
                        on cc.id = c.id
-                     join id_map m
+                     left join id_map m
                        on m.t = 'officer' and m.did = c.officer
                      order by c.name''')
         wb = xlwt.Workbook()
