@@ -86,7 +86,7 @@ order by s.date desc
 create table id_map (
  t text,
  did integer,
- zid integer,
+ zid text,
  primary key (t, zid)
 )
 ;

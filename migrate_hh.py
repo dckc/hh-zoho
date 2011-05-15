@@ -210,11 +210,12 @@ class HH_Zoho(ZohoAPI):
         for e_vals in results:
             id_zoho = e_vals.xpath('field[@name="ID"]/value/text()')[0]
             id_dabble = e_vals.xpath('field[@name="id_dabble"]/value/text()')[0]
-            idmap.append((form, id_dabble, id_zoho))
+            idmap.append((form, int(id_dabble), id_zoho))
         with transaction(self._conn) as work:
             work.executemany('''insert into id_map(t, did, zid)
                                 values(?, ?, ?)''',
                              idmap)
+            print >> sys.stderr, 'id_map: %d x %s' % (work.rowcount, form)
 
     def _csv_reader(self, basename):
         return csv.DictReader(open(os.path.join(self._dir, basename)))
@@ -250,7 +251,7 @@ class HH_Zoho(ZohoAPI):
         with transaction(self._conn) as q:
             q.execute("select did, zid from id_map where t=?", (form,))
             idmap=q.fetchall()
-        return dict([(str(k), str(v)) for k, v in idmap])
+        return dict([(str(k), v) for k, v in idmap])
 
     def load_clients(self, basename="Client.csv"):
         # dead code?
@@ -295,6 +296,8 @@ def make_clients_spreadsheet(db, out='clients.xls'):
         wb = xlwt.Workbook()
         ws = wb.add_sheet('Clients')
         col = 0
+        # prevent 18 digit IDs from turning into floats
+        intfmt = xlwt.easyxf(num_format_str='0')
         for coldesc in q.description:
             ws.write(0, col, coldesc[0])
             col += 1
@@ -302,7 +305,10 @@ def make_clients_spreadsheet(db, out='clients.xls'):
         for row in q.fetchall():
             col = 0
             for v in row:
-                ws.write(rownum, col, v)
+                if type(v) in (type(1), type(1L)):
+                    ws.write(rownum, col, v, intfmt)
+                else:
+                    ws.write(rownum, col, v)
                 col += 1
             rownum += 1
     wb.save(out)
