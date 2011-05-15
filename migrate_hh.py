@@ -31,13 +31,18 @@ def main(argv):
 
         hz.load_basics()
 
-    elif '--truncate-clients' in argv:
+    elif '--truncate' in argv:
+        form = argv[2]
         hz = HH_Zoho(None, None, None, None)  # assume we have a ticket
-        hz.truncate('client')
+        hz.truncate(form)
 
     elif '--make-clients-spreadsheet' in argv:
         db, out = argv[2:4]
         make_clients_spreadsheet(db, out)
+
+    elif '--make-sessions-spreadsheet' in argv:
+        db, out = argv[2:4]
+        make_sessions_spreadsheet(db, out)
         
 
 def prepare_db(db, bak, init='hh_data.sql', fixup='hh_fixup.sql'):
@@ -283,34 +288,46 @@ class HH_Zoho(ZohoAPI):
 
 
 def make_clients_spreadsheet(db, out='clients.xls'):
+    dml = '''select m.zid as officer, c.*
+             from clients c
+             join current_clients cc
+               on cc.id = c.id
+             left join id_map m
+                    on m.t = 'officer' and m.did = c.officer
+             order by c.name'''
+    _make_spreadsheet(db, out, dml)
+
+
+def make_sessions_spreadsheet(db, out='sessions.xls'):
+    dml = '''select m.zid as group_id, s.*
+             from current_sessions s
+             join id_map m
+               on m.t = 'group' and m.did = s.group_id
+             order by s.date desc'''
+    _make_spreadsheet(db, out, dml)
+
+
+
+def _make_spreadsheet(db, out, dml):
     conn = sqlite3.connect(db)
         
     with transaction(conn) as q:
-        q.execute('''select m.zid as officer, c.*
-                     from clients c
-                     join current_clients cc
-                       on cc.id = c.id
-                     left join id_map m
-                       on m.t = 'officer' and m.did = c.officer
-                     order by c.name''')
-        wb = xlwt.Workbook()
-        ws = wb.add_sheet('Clients')
+        q.execute(dml)
+        rows = q.fetchall()
+        
+    wb = xlwt.Workbook()
+    ws = wb.add_sheet('Records')
+    col = 0
+    for coldesc in q.description:
+        ws.write(0, col, coldesc[0])
+        col += 1
+    rownum = 1
+    for row in rows:
         col = 0
-        # prevent 18 digit IDs from turning into floats
-        intfmt = xlwt.easyxf(num_format_str='0')
-        for coldesc in q.description:
-            ws.write(0, col, coldesc[0])
+        for v in row:
+            ws.write(rownum, col, v)
             col += 1
-        rownum = 1
-        for row in q.fetchall():
-            col = 0
-            for v in row:
-                if type(v) in (type(1), type(1L)):
-                    ws.write(rownum, col, v, intfmt)
-                else:
-                    ws.write(rownum, col, v)
-                col += 1
-            rownum += 1
+        rownum += 1
     wb.save(out)
 
 
