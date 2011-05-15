@@ -13,22 +13,28 @@ import sqlite3
 import sys
 
 from lxml import etree
+import xlwt
 
-
-def main_db(argv):
-    db, bak = argv[1:3]
-    prepare_db(db, bak)
 
 def main(argv):
-    username, backup_dir = argv[1:3]
+    if '--prepare-db' in argv:
+        db, bak = argv[2:4]
+        prepare_db(db, bak)
+    elif '--load-basics' in argv:
+        db, username, backup_dir = argv[2:5]
 
-    def pw_cb():
-        return getpass.getpass('Password for %s: ' % username)
+        conn = sqlite3.connect(db)
+        def pw_cb():
+            return getpass.getpass('Password for %s: ' % username)
 
-    hz = HH_Zoho(username, pw_cb, backup_dir)
+        hz = HH_Zoho(conn, username, pw_cb, backup_dir)
 
-    hz.load_all()
+        hz.load_basics()
 
+    elif '--make-clients-spreadsheet' in argv:
+        db, out = argv[2:4]
+        make_clients_spreadsheet(db, out)
+        
 
 def prepare_db(db, bak, init='hh_data.sql', fixup='hh_fixup.sql'):
     conn = sqlite3.connect(db)
@@ -168,21 +174,15 @@ class ZohoAPI(object):
 class HH_Zoho(ZohoAPI):
     app = 'hope-harbor'
 
-    def __init__(self, login_id, password_cb, backup_dir):
+    def __init__(self, conn, login_id, password_cb, backup_dir):
         self._dir = backup_dir
-        self._group = {}  # id_dabble -> zoho ID
-        self._office = {}
-        self._officer = {}
-        self._client = {}
-        self._session = {}
+        self._conn = conn
         ZohoAPI.__init__(self, login_id, password_cb)
 
-    def load_all(self):
+    def load_basics(self):
         self.load_offices()
         self.load_officers()
-        self.load_clients()
         self.load_groups()
-        #Todo: load sessions and visits using .xls or .csv format?
 
     def load_groups(self, basename="Group.csv"):
         def fixup(tr):
@@ -193,19 +193,24 @@ class HH_Zoho(ZohoAPI):
 
         self._load_table(basename, 'group',
                          ('Name', 'rate', 'Eval', 'id_dabble'),
-                         fixup, self._group)
-
-    def _load_table(self, basename, form, columns_out, fixup, idmap):
+                         fixup)
+        
+    def _load_table(self, basename, form, columns_out, fixup):
         tr = self._csv_reader(basename)
         tr.next()
         self.truncate(form)
 
         results = self.add_records(self.app, form, columns_out, fixup(tr))
 
+        idmap = []
         for e_vals in results:
             id_zoho = e_vals.xpath('field[@name="ID"]/value/text()')[0]
             id_dabble = e_vals.xpath('field[@name="id_dabble"]/value/text()')[0]
-            idmap[id_dabble] = id_zoho
+            idmap.append((form, id_dabble, id_zoho))
+        with transaction(self._conn) as work:
+            work.executemany('''insert into id_map(t, did, zid)
+                                values(?, ?, ?)''',
+                             idmap)
 
     def _csv_reader(self, basename):
         return csv.DictReader(open(os.path.join(self._dir, basename)))
@@ -222,35 +227,46 @@ class HH_Zoho(ZohoAPI):
 
         self._load_table(basename, 'office',
                          ('Name', 'fax', 'notes', 'address', 'id_dabble'),
-                         fixup, self._office)
+                         fixup)
 
     def load_officers(self, basename="Officer.csv"):
+        idmap = self._idmap('office')
+
         def fixup(tr):
             return [dict(rec, id_dabble=rec['ID'],
-                         office=self._office.get(rec['office'], ''))
+                         office=idmap.get(rec['office'], ''))
                     for rec in tr
                     if rec['Name']]
 
         self._load_table(basename, 'officer',
                          ('Name', "email", "office", "id_dabble"),
-                         fixup, self._officer)
+                         fixup)
+
+    def _idmap(self, form):
+        with transaction(self._conn) as q:
+            q.execute("select did, zid from id_map where t=?", (form,))
+            idmap=q.fetchall()
+        return dict([(str(k), str(v)) for k, v in idmap])
 
     def load_clients(self, basename="Client.csv"):
+        # dead code?
+        idmap = self._idmap('officer')
         def fixup(tr):
             return [dict(rec, id_dabble=rec['ID'],
-                         Officer=self._officer.get(rec['officer'], ''))
+                         officer=idmap.get(rec['officer'], None))
                     for rec in tr]
 
         self._load_table(basename, 'client',
                          ("Name", "Ins", "Approval", "DX", "Note",
                           "Officer", "DOB", "address", "phone",
                           "batch", "id_dabble"),
-                         fixup, self._client)
+                         fixup)
 
     def load_sessions(self, basename="Session.csv"):
+        idmap = self._idmap('group')
         def fixup(tr):
             return [dict(rec, id_dabble=rec['ID'],
-                         Group=self._group.get(rec['group'], ''),
+                         group_id=idmap.get(rec['group'], ''),
                          date_field=rec['date'])
                     for rec in tr
                     if rec['group'] and rec['date']]
@@ -258,7 +274,34 @@ class HH_Zoho(ZohoAPI):
         self._load_table(basename, 'session',
                          ("date_field", "Group", "Time", "Therapist",
                           'id_dabble'),
-                         fixup, self._office)
+                         fixup)
+
+
+def make_clients_spreadsheet(db, out='clients.xls'):
+    conn = sqlite3.connect(db)
+        
+    with transaction(conn) as q:
+        q.execute('''select m.zid as officer, c.*
+                     from clients c
+                     join current_clients cc
+                       on cc.id = c.id
+                     join id_map m
+                       on m.t = 'officer' and m.did = c.officer
+                     order by c.name''')
+        wb = xlwt.Workbook()
+        ws = wb.add_sheet('Clients')
+        col = 0
+        for coldesc in q.description:
+            ws.write(0, col, coldesc[0])
+            col += 1
+        rownum = 1
+        for row in q.fetchall():
+            col = 0
+            for v in row:
+                ws.write(rownum, col, v)
+                col += 1
+            rownum += 1
+    wb.save(out)
 
 
 def import_csv(trx, fn, table, colsize=500):
