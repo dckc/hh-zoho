@@ -9,6 +9,18 @@ DB=/tmp/dz.db
 BAK=Dabble-2011-05-11-024407/
 U=dconnolly@hopeharborkc.com
 
+all: sessions.xls clients.xls
+
+save-idmaps:
+	$(PYTHON) migrate_hh.py --save-idmap $(DB) client
+	$(PYTHON) migrate_hh.py --save-idmap $(DB) session
+
+visits.xls: $(DB)
+	$(PYTHON) migrate_hh.py --make-visits-spreadsheet $(DB) $@
+
+sessions.xls: $(DB)
+	$(PYTHON) migrate_hh.py --make-sessions-spreadsheet $(DB) $@
+
 clients.xls: $(DB)
 	$(PYTHON) migrate_hh.py --make-clients-spreadsheet $(DB) $@
 

@@ -36,6 +36,12 @@ def main(argv):
         hz = HH_Zoho(None, None, None, None)  # assume we have a ticket
         hz.truncate(form)
 
+    elif '--save-idmap' in argv:
+        db, form = argv[2:4]
+        conn = sqlite3.connect(db)
+        hz = HH_Zoho(conn, None, None, None)  # assume we have a ticket
+        hz.save_idmap(form)
+
     elif '--make-clients-spreadsheet' in argv:
         db, out = argv[2:4]
         make_clients_spreadsheet(db, out)
@@ -43,6 +49,10 @@ def main(argv):
     elif '--make-sessions-spreadsheet' in argv:
         db, out = argv[2:4]
         make_sessions_spreadsheet(db, out)
+        
+    elif '--make-visits-spreadsheet' in argv:
+        db, out = argv[2:4]
+        make_visits_spreadsheet(db, out)
         
 
 def prepare_db(db, bak, init='hh_data.sql', fixup='hh_fixup.sql'):
@@ -109,6 +119,27 @@ class ZohoAPI(object):
                                  ticket=self._ticket))
         return json.loads(ans.read())
 
+    def view_records(self, app, form, criteria, reloperator, columns,
+                     url='http://creator.zoho.com/api/xml/read'):
+        e = self._where(None, app, form, criteria, reloperator)
+        #print >> sys.stderr, etree.tostring(e, pretty_print=True)
+        print >> sys.stderr, 'view %s...' % form
+        ans = urlopen(url,
+                     urlencode(dict(apikey=self._apikey,
+                                    ticket=self._ticket,
+                                    XMLString=etree.tostring(e))))
+        doc = etree.parse(ans)
+        for err in doc.xpath('//response/form'
+                             '/status[text() != "Success"]'):
+            print >> sys.stderr, etree.tostring(err, pretty_print=True)
+        #print >> sys.stderr, etree.tostring(doc, pretty_print=True)
+        found = doc.xpath('//response/form/records/record')
+        print >> sys.stderr, 'view got: %s x %d' % (form, len(found))
+        return [
+            [e_record.xpath('column[@name="%s"]/value/text()' % col)[0]
+             for col in columns]
+            for e_record in found]
+        
     def add_records(self, app, form, columns, rows, chunk_size=200):
         done = 0
         out = []
@@ -148,30 +179,9 @@ class ZohoAPI(object):
         return doc.xpath('//response/result/form'
                          '/add[status/text()="Success"]/values')
 
-    def csv_write(self, app, form, data,
-                  url='http://creator.zoho.com/api/csv/write'):
-        print >> sys.stderr, 'api/csv/write...'
-        ans = urlopen(url,
-                      urlencode(dict(apikey=self._apikey,
-                                     ticket=self._ticket,
-                                     applicationName=app,
-                                     CSVString=(("%s,%s,Add\n" % (app, form))
-                                                + data))))
-        return ans.read().split('<br>')
-
     def delete(self, app, form, criteria, reloperator,
                    url='http://creator.zoho.com/api/xml/write'):
-        e = etree.Element('ZohoCreator')
-        sub = etree.SubElement
-        e_app = sub(sub(e, 'applicationlist'), 'application', name=app)
-        e_form = sub(sub(e_app, 'formlist'), 'form', name=form)
-        e_crit = sub(sub(e_form, 'delete'), 'criteria')
-        first = True
-        for n, op, v in criteria:
-            if not first:
-                sub(e_crit, 'reloperator').text = reloperator
-            sub(e_crit, 'field', name=n, compOperator=op, value=v)
-
+        e = self._where('delete', app, form, criteria, reloperator)
         print >> sys.stderr, 'delete %s...' % form
         ans = urlopen(url,
                      urlencode(dict(apikey=self._apikey,
@@ -179,6 +189,21 @@ class ZohoAPI(object):
                                     XMLString=etree.tostring(e))))
         return ans.read()
 
+    def _where(self, op, app, form, criteria, reloperator):
+        e = etree.Element('ZohoCreator')
+        sub = etree.SubElement
+        e_app = sub(op and sub(e, 'applicationlist') or e,
+                    'application', name=app)
+        e_form = sub(op and sub(e_app, 'formlist') or e_app,
+                     'form', name=form)
+        e_crit = sub(op and sub(e_form, op) or e_form, 'criteria')
+        first = True
+        for n, op, v in criteria:
+            if not first:
+                sub(e_crit, 'reloperator').text = reloperator
+            sub(e_crit, 'field', name=n, compOperator=op, value=v)
+        return e
+        
 
 class HH_Zoho(ZohoAPI):
     app = 'hope-harbor'
@@ -258,33 +283,14 @@ class HH_Zoho(ZohoAPI):
             idmap=q.fetchall()
         return dict([(str(k), v) for k, v in idmap])
 
-    def load_clients(self, basename="Client.csv"):
-        # dead code?
-        idmap = self._idmap('officer')
-        def fixup(tr):
-            return [dict(rec, id_dabble=rec['ID'],
-                         officer=idmap.get(rec['officer'], None))
-                    for rec in tr]
-
-        self._load_table(basename, 'client',
-                         ("Name", "Ins", "Approval", "DX", "Note",
-                          "Officer", "DOB", "address", "phone",
-                          "batch", "id_dabble"),
-                         fixup)
-
-    def load_sessions(self, basename="Session.csv"):
-        idmap = self._idmap('group')
-        def fixup(tr):
-            return [dict(rec, id_dabble=rec['ID'],
-                         group_id=idmap.get(rec['group'], ''),
-                         date_field=rec['date'])
-                    for rec in tr
-                    if rec['group'] and rec['date']]
-
-        self._load_table(basename, 'session',
-                         ("date_field", "Group", "Time", "Therapist",
-                          'id_dabble'),
-                         fixup)
+    def save_idmap(self, form):
+        rows = self.view_records(self.app, form, (), '', ('id_dabble', 'ID'))
+        with transaction(self._conn) as work:
+            work.executemany("insert into id_map(t, did, zid) "
+                             "values (?, ?, ?)",
+                             [(form, int(row[0]), row[1])
+                              for row in rows])
+            print >> sys.stderr, 'id_map: %d x %s' % (work.rowcount, form)
 
 
 def make_clients_spreadsheet(db, out='clients.xls'):
@@ -295,7 +301,8 @@ def make_clients_spreadsheet(db, out='clients.xls'):
              left join id_map m
                     on m.t = 'officer' and m.did = c.officer
              order by c.name'''
-    _make_spreadsheet(db, out, dml)
+    cols, rows = _get_table(db, dml)
+    _write_spreadsheet(out, cols, rows)
 
 
 def make_sessions_spreadsheet(db, out='sessions.xls'):
@@ -304,22 +311,50 @@ def make_sessions_spreadsheet(db, out='sessions.xls'):
              join id_map m
                on m.t = 'group' and m.did = s.group_id
              order by s.date desc'''
-    _make_spreadsheet(db, out, dml)
+    cols, rows = _get_table(db, dml)
+    _write_spreadsheet(out, cols, rows)
 
 
+def make_visits_spreadsheet(db, out='visits.xls'):
+    conn = sqlite3.connect(db)
 
-def _make_spreadsheet(db, out, dml):
+    # Doing the join in the DB was remarkably slow.
+    # Let's try python hash tables...
+    with transaction(conn) as q:
+        q.execute("select did, zid from id_map where t='client'")
+        cmap = dict(q.fetchall())
+        q.execute("select did, zid from id_map where t='session'")
+        smap = dict(q.fetchall())
+        q.execute("select * from current_visits")
+        cols = [coldesc[0] for coldesc in q.description]
+        rows = [list(row) for row in q.fetchall()]
+
+    ccol = cols.index('client')
+    scol = cols.index('session')
+    for row in rows:
+        row[ccol] = cmap[row[ccol]]
+        row[scol] = smap[row[scol]]
+
+    _write_spreadsheet(out, cols, rows)
+
+
+def _get_table(db, dml):
     conn = sqlite3.connect(db)
         
     with transaction(conn) as q:
         q.execute(dml)
+        cols = [coldesc[0] for coldesc in q.description]
         rows = q.fetchall()
-        
+
+    return cols, rows
+
+
+def _write_spreadsheet(out, cols, rows):
     wb = xlwt.Workbook()
     ws = wb.add_sheet('Records')
     col = 0
-    for coldesc in q.description:
-        ws.write(0, col, coldesc[0])
+    for colname in cols:
+        ws.write(0, col, colname)
         col += 1
     rownum = 1
     for row in rows:
