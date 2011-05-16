@@ -1,6 +1,6 @@
 /*
  * Author       : hopeharbor
- * Generated on : 14-May-2011 15:30:49
+ * Generated on : 16-May-2011 14:50:57
  * Version      : 3.0
  */
 application "Hope Harbor"
@@ -9,70 +9,90 @@ application "Hope Harbor"
     secured connection = true
     date format = "MM/dd/yyyy"
     time zone = "America/Chicago"
-    section progress_note
+    section session1
     {
-        displayname = "progress note"
-        form  progress_note
+        displayname = "Session"
+        list  session_View
         {
-            displayname  =  "progress note"
+            displayname = "Sessions"
+            show  all  rows  from  session 
+            (
+                group_id.Eval
+                Name
+                date_field as "Date"
+                Time
+                Therapist
+            )
+            sort by
+            (
+                date_field   descending
+            )
+            options
+            (
+                display rows = 20
+            )
+        }
+
+        form  session
+        {
             field alignment = left
             
-            notes
+            id_dabble
             (
-                type = richtext
-                height  =  200px
-                width  =  382px
-                toolbar = enable
+                type  =  number
+                private  =  true
+                width  =  100px
             )
 
-            must  have  signed_by
+            date_field
             (
-                displayname  =  "signed by"
-                type  =  email
-                width  =  200px
-            )
-
-            signed_on
-            (
-                displayname  =  "signed on"
+                displayname  =  "date"
                 type  =  date
                 width  =  130px
             )
 
-            must  have  client
+            Time
             (
+                type  =  text
+                width  =  200px
+            )
+
+            Month
+            (
+                type  =  formula
+                value  =  date_field.getMonth()
+            )
+
+            must  have  group_id
+            (
+                displayname  =  "Group"
                 type  =  picklist
-                values  =  client.ID
-                displayformat = [ Name + " - " + DOB ]
+                values  =  group.ID
+                displayformat = [ Name ]
                 allow new entries = true
                 [
-                    displayname = "Add client"
+                    displayname = "group"
                 ]
                 width  =  206px
             )
 
-            session_duration
+            Name
             (
-                displayname  =  "session duration"
-                type  =  datetime
-                width  =  130px
+                type  =  formula
+                value  =  thisapp.session_group(ID)
             )
 
-            session_date
+            Therapist
             (
-                displayname  =  "session date"
-                type  =  date
-                width  =  130px
+                type  =  picklist
+                values  =  {"Ratliff, Dr. Bascom",   "Maxey, Debra",   "Woody",   "Clemmons, Tamara",   "Hall, Jon",   "Amy",   "Mary C",   "Yang, Ann",   "Lowe, Kelly",   "Fry, Tori",   "Jackson, Cherlisa",   "Hardy, Lauren",   "Delhanty, Will",   "Jessi Lefholz",   "Shelton, Danyele",   "Christa",   "Delehanty, Will",   "Casey, Meghan",   "Lynda Falley",   "Parrett, Shelley",   "Kathryn Dawn",   "Foxworthy, Brian",   "Porter, Pamela",   "McLemore, Alicia",   "Hammond, Chelsea",   "April Craig",   "Susan"}
+                width  =  206px
             )
 
             actions
             {
                 on add
                 {
-                    on load
-                    {
-                        input.signed_on = zoho.currenttime;
-                    }
                     Submit
                     (
                         type  =  submit
@@ -100,19 +120,198 @@ application "Hope Harbor"
             }
         }
 
-        summary  progress_note_View
+        summary  session_Summary
         {
-            displayname = "progress note View"
-            show  all  rows  from  progress_note 
+            displayname = "session Summary"
+            show  all  rows  from  session 
             (
-                notes
-                signed_by as "signed by"
-                signed_on as "signed on"
-                client
-                session_duration as "session duration"
-                session_date as "session date"
+                date_field as "date"
+                id_dabble
+                Therapist
+                Time
+                Month
+                group_id as "Group"
+                Name
+            )
+            filters 
+            (
+                date_field
+                Therapist
             )
         }
+
+        htmlpage Sign_in_Sheet()
+displayname = "Sign-in Sheet"
+content
+        <%{%>
+<h1>Sign-in Sheet</h1>
+
+<div elName='zc-component' formLinkName='session' params='zc_Header=true&amp;zc_SuccMsg=Data Added Sucessfully!&amp;zc_SubmitVal=Submit&amp;zc_ResetVal=Reset'>Loading Form...</div> 
+<div elName='zc-component' formLinkName='visit' params='zc_Header=false&amp;zc_SuccMsg=Data Added Sucessfully!&amp;zc_SubmitVal=Submit&amp;zc_ResetVal=Reset'>Loading Form...</div>         <%}%>
+
+        calendar  Session_Calendar
+        {
+            displayname = "Session Calendar"
+            show  all  rows  from  session 
+            (
+                date_field as "date"
+                group_id as "Group"
+            )
+            filters 
+            (
+                date_field
+                Therapist
+            )
+            options
+            (
+                show calendar based on date_field
+            )
+        }
+
+        form  Sign_in_top
+        {
+            displayname  =  "Sign in Sheet Top"
+            store data in zc = false
+            success message  =  "Data Added Successfully!"
+            field alignment = left
+            
+            column
+            {
+                must  have  group_id
+                (
+                    displayname  =  "Group"
+                    type  =  picklist
+                    values  =  group.ID
+                    displayformat = [ Name ]
+                    allow new entries = true
+                    [
+                        displayname = "group"
+                    ]
+                    width  =  206px
+                )
+
+                Therapist
+                (
+                    type  =  picklist
+                    values  =  {"Option 1",   "Option 2",   "Option 3"}
+                    width  =  206px
+                )
+
+                Session
+                (
+                    type  =  picklist
+                    values  =  session.ID
+                    displayformat = [ Name + " - " + date_field ]
+                    width  =  206px
+                )
+
+            }
+            column
+            {
+                must  have  Date_field
+                (
+                    displayname  =  "Date"
+                    type  =  date
+                    width  =  130px
+                )
+
+                Time
+                (
+                    type  =  text
+                    width  =  200px
+                )
+
+            }
+        }
+
+        form  Sign_in_visit
+        {
+            displayname  =  "Sign in visit"
+            store data in zc = false
+            field alignment = left
+            
+            column
+            {
+                must  have  Client
+                (
+                    type  =  picklist
+                    values  =  client.ID
+                    displayformat = [ Name ]
+                    allow new entries = true
+                    [
+                        displayname = "client"
+                    ]
+                    width  =  206px
+                )
+
+                Client_pd
+                (
+                    displayname  =  "Client pd"
+                    type  =  USD
+                    width  =  100px
+                )
+
+            }
+            column
+            {
+                Attend
+                (
+                    type  =  checkbox
+                    defaultvalue  =  true
+                )
+
+                Note
+                (
+                    type  =  textarea
+                    height  =  100px
+                    width  =  200px
+                )
+
+            }
+        }
+
+        htmlpage Recent_Sessions()
+displayname = "Recent Sessions"
+print = true
+pdf = true
+content
+        <%{%>
+<p><em>todo: link groups, clients</em></p>
+<table>
+<thead>
+<th>date</th>
+<th>group</th>
+<th>Last Modified</th>
+<th>visit</th>
+</thead>
+<tbody><%for each s in session sort by  date_field desc
+            {%>
+<tr>
+ <td><%=s.date_field%></td>
+
+ <td>        <%grp  =  group  [ID == s.group_id];%>
+<%=grp.Name%>
+</td>
+ <td>@@</td>
+ <td>                <%for each v in visit  [session == s.ID]
+                {%>
+ <%=v.client.Name%>
+                                                                                              <%}%>
+ </td>
+
+     
+</tr>
+                                                            <%}%>
+</tbody>
+</table>
+        <%}%>
+
+        htmlpage Sign_in_Sheet_x()
+displayname = "Sign in Sheet x"
+content
+        <%{%>
+<div elName='zc-component' formLinkName='Sign_in_top' params='zc_Header=false&amp;zc_SuccMsg=Data Added Sucessfully!&amp;zc_SubmitVal=Submit&amp;zc_ResetVal=Reset'>Loading ...</div> 
+<div elName='zc-component' formLinkName='Sign_in_visit' params='zc_Header=true&amp;zc_SuccMsg=Data Added Sucessfully!&amp;zc_SubmitVal=Submit&amp;zc_ResetVal=Reset'>Loading Form...</div>         <%}%>
 
     }
 
@@ -241,88 +440,6 @@ application "Hope Harbor"
 
     }
 
-    section group
-    {
-        form  group
-        {
-            field alignment = left
-            
-            Name
-            (
-                type  =  text
-                width  =  200px
-            )
-
-            rate
-            (
-                type  =  USD
-                width  =  100px
-            )
-
-            id_dabble
-            (
-                type  =  number
-                private  =  true
-                width  =  100px
-            )
-
-            Eval
-            (
-                type  =  checkbox
-                defaultvalue  =  false
-            )
-
-            actions
-            {
-                on add
-                {
-                    Submit
-                    (
-                        type  =  submit
-                        displayname  =  "Save Changes"
-                    )
-                    Reset
-                    (
-                        type  =  reset
-                        displayname  =  "Reset Form"
-                    )
-                }
-                on edit
-                {
-                    Update
-                    (
-                        type  =  submit
-                        displayname  =  "Save Changes"
-                    )
-                    Cancel
-                    (
-                        type  =  cancel
-                        displayname  =  "Close Form"
-                    )
-                }
-            }
-        }
-
-        list  group_View
-        {
-            displayname = "group View"
-            show  all  rows  from  group 
-            (
-                Eval
-                (
-                    width = 40px
-                )
-                Name
-                rate
-            )
-            sort by
-            (
-                Name   ascending
-            )
-        }
-
-    }
-
     section client
     {
         form  client
@@ -360,8 +477,9 @@ application "Hope Harbor"
                 width  =  200px
             )
 
-            Officer
+            officer
             (
+                displayname  =  "Officer"
                 type  =  picklist
                 values  =  officer.ID
                 displayformat = [ Name ]
@@ -442,7 +560,7 @@ application "Hope Harbor"
             show  all  rows  from  client 
             (
                 Name
-                Officer
+                officer as "Officer"
                 (
                     view = officer_Summary1
                 )
@@ -466,13 +584,21 @@ application "Hope Harbor"
                 address
                 phone
                 DOB
-                Officer
+                officer as "Officer"
                 id_dabble
                 batch
             )
             filters 
             (
                 DOB
+            )
+            permission
+            (
+                add = true
+                duplicate = true
+                edit = true
+                bulk edit = true
+                delete = true
             )
         }
 
@@ -746,6 +872,86 @@ content
 
 </style></meta>        <%}%>
 
+        grid  Client_Entry
+        {
+            displayname = "Client Entry"
+            show  all  rows  from  client 
+            (
+                Name
+                officer as "Officer"
+                address
+                Note
+                DX
+                Ins
+                Approval
+                phone
+                DOB
+                batch
+            )
+            filters 
+            (
+                DOB
+            )
+            permission
+            (
+                add = true
+                duplicate = true
+                edit = true
+                bulk edit = true
+                delete = true
+            )
+        }
+
+        form  batch
+        {
+            field alignment = left
+            
+            Name
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            actions
+            {
+                on add
+                {
+                    Submit
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Reset
+                    (
+                        type  =  reset
+                        displayname  =  "Reset Form"
+                    )
+                }
+                on edit
+                {
+                    Update
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Cancel
+                    (
+                        type  =  cancel
+                        displayname  =  "Close Form"
+                    )
+                }
+            }
+        }
+
+        list  batch_View
+        {
+            displayname = "batch View"
+            show  all  rows  from  batch 
+            (
+                Name
+            )
+        }
+
     }
 
     section officer
@@ -863,8 +1069,114 @@ content
 
     }
 
-    section office
+    section group
     {
+        form  group
+        {
+            field alignment = left
+            
+            Name
+            (
+                type  =  text
+                width  =  200px
+            )
+
+            rate
+            (
+                type  =  USD
+                width  =  100px
+            )
+
+            id_dabble
+            (
+                type  =  number
+                private  =  true
+                width  =  100px
+            )
+
+            Eval
+            (
+                type  =  checkbox
+                defaultvalue  =  false
+            )
+
+            actions
+            {
+                on add
+                {
+                    Submit
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Reset
+                    (
+                        type  =  reset
+                        displayname  =  "Reset Form"
+                    )
+                }
+                on edit
+                {
+                    Update
+                    (
+                        type  =  submit
+                        displayname  =  "Save Changes"
+                    )
+                    Cancel
+                    (
+                        type  =  cancel
+                        displayname  =  "Close Form"
+                    )
+                }
+            }
+        }
+
+        list  group_View
+        {
+            displayname = "group View"
+            show  all  rows  from  group 
+            (
+                Eval
+                (
+                    width = 40px
+                )
+                Name
+                rate
+            )
+            sort by
+            (
+                Name   ascending
+            )
+            custom actions
+            (
+                "Prune Groups"
+                (
+                    function = prune_groups(group)
+                    show action in view header = true
+                    show action for each record = false
+                    execute action for collection of records
+                    success message = "Pruned empty groups"
+                )
+            )
+        }
+
+        summary  group_Summary
+        {
+            displayname = "group Summary"
+            show  all  rows  from  group 
+            (
+                Name
+                rate
+                id_dabble
+                Eval
+            )
+        }
+
+    }
+
+    section office1
+    {
+        displayname = "Office"
         form  office
         {
             field alignment = left
@@ -957,22 +1269,71 @@ content
 
     }
 
-    section batch
+    section progress_note
     {
-        form  batch
+        displayname = "progress note"
+        hide = true
+        form  progress_note
         {
+            displayname  =  "progress note"
             field alignment = left
             
-            Name
+            notes
             (
-                type  =  text
+                type = richtext
+                height  =  200px
+                width  =  382px
+                toolbar = enable
+            )
+
+            must  have  signed_by
+            (
+                displayname  =  "signed by"
+                type  =  email
                 width  =  200px
+            )
+
+            signed_on
+            (
+                displayname  =  "signed on"
+                type  =  date
+                width  =  130px
+            )
+
+            must  have  client
+            (
+                type  =  picklist
+                values  =  client.ID
+                displayformat = [ Name + " - " + DOB ]
+                allow new entries = true
+                [
+                    displayname = "Add client"
+                ]
+                width  =  206px
+            )
+
+            session_duration
+            (
+                displayname  =  "session duration"
+                type  =  datetime
+                width  =  130px
+            )
+
+            session_date
+            (
+                displayname  =  "session date"
+                type  =  date
+                width  =  130px
             )
 
             actions
             {
                 on add
                 {
+                    on load
+                    {
+                        input.signed_on = zoho.currenttime;
+                    }
                     Submit
                     (
                         type  =  submit
@@ -1000,210 +1361,25 @@ content
             }
         }
 
-        list  batch_View
+        summary  progress_note_View
         {
-            displayname = "batch View"
-            show  all  rows  from  batch 
+            displayname = "progress note View"
+            show  all  rows  from  progress_note 
             (
-                Name
+                notes
+                signed_by as "signed by"
+                signed_on as "signed on"
+                client
+                session_duration as "session duration"
+                session_date as "session date"
             )
         }
 
     }
 
-    section session
+    section batch
     {
-        form  session
-        {
-            field alignment = left
-            
-            id_dabble
-            (
-                type  =  number
-                private  =  true
-                width  =  100px
-            )
-
-            date_field
-            (
-                displayname  =  "date"
-                type  =  date
-                width  =  130px
-            )
-
-            Time
-            (
-                type  =  text
-                width  =  200px
-            )
-
-            Month
-            (
-                type  =  formula
-                value  =  date_field.getMonth()
-            )
-
-            must  have  Group
-            (
-                type  =  picklist
-                values  =  group.ID
-                displayformat = [ Name ]
-                allow new entries = true
-                [
-                    displayname = "group"
-                ]
-                width  =  206px
-            )
-
-            Name
-            (
-                type  =  formula
-                value  =  thisapp.session_group(ID)
-            )
-
-            Therapist
-            (
-                type  =  picklist
-                values  =  {"Ratliff, Dr. Bascom",   "Maxey, Debra",   "Woody",   "Clemmons, Tamara",   "Hall, Jon",   "Amy",   "Mary C",   "Yang, Ann",   "Lowe, Kelly",   "Fry, Tori",   "Jackson, Cherlisa",   "Hardy, Lauren",   "Delhanty, Will",   "Jessi Lefholz",   "Shelton, Danyele",   "Christa",   "Delehanty, Will",   "Casey, Meghan",   "Lynda Falley",   "Parrett, Shelley",   "Kathryn Dawn",   "Foxworthy, Brian",   "Porter, Pamela",   "McLemore, Alicia",   "Hammond, Chelsea",   "April Craig",   "Susan"}
-                width  =  206px
-            )
-
-            actions
-            {
-                on add
-                {
-                    Submit
-                    (
-                        type  =  submit
-                        displayname  =  "Save Changes"
-                    )
-                    Reset
-                    (
-                        type  =  reset
-                        displayname  =  "Reset Form"
-                    )
-                }
-                on edit
-                {
-                    Update
-                    (
-                        type  =  submit
-                        displayname  =  "Save Changes"
-                    )
-                    Cancel
-                    (
-                        type  =  cancel
-                        displayname  =  "Close Form"
-                    )
-                }
-            }
-        }
-
-        list  session_View
-        {
-            displayname = "Sessions"
-            show  all  rows  from  session 
-            (
-                Group.Eval
-                Name
-                date_field as "Date"
-                Time
-                Therapist
-            )
-            sort by
-            (
-                date_field   descending
-            )
-            options
-            (
-                display rows = 20
-            )
-        }
-
-        summary  session_Summary
-        {
-            displayname = "session Summary"
-            show  all  rows  from  session 
-            (
-                date_field as "date"
-                id_dabble
-                Therapist
-                Time
-                Month
-                Group
-                Name
-            )
-            filters 
-            (
-                date_field
-                Therapist
-            )
-        }
-
-        htmlpage Sign_in_Sheet()
-displayname = "Sign-in Sheet"
-content
-        <%{%>
-<h1>Sign-in Sheet</h1>
-
-<div elName='zc-component' formLinkName='session' params='zc_Header=true&amp;zc_SuccMsg=Data Added Sucessfully!&amp;zc_SubmitVal=Submit&amp;zc_ResetVal=Reset'>Loading Form...</div> 
-<div elName='zc-component' formLinkName='visit' params='zc_Header=false&amp;zc_SuccMsg=Data Added Sucessfully!&amp;zc_SubmitVal=Submit&amp;zc_ResetVal=Reset'>Loading Form...</div>         <%}%>
-
-        calendar  Session_Calendar
-        {
-            displayname = "Session Calendar"
-            show  all  rows  from  session 
-            (
-                date_field as "date"
-                Group
-            )
-            filters 
-            (
-                date_field
-                Therapist
-            )
-            options
-            (
-                show calendar based on date_field
-            )
-        }
-
-        htmlpage Recent_Sessions()
-displayname = "Recent Sessions"
-print = true
-pdf = true
-content
-        <%{%>
-<p><em>todo: link groups, clients</em></p>
-<table>
-<thead>
-<th>date</th>
-<th>group</th>
-<th>Last Modified</th>
-<th>visit</th>
-</thead>
-<tbody><%for each s in session sort by  date_field desc
-            {%>
-<tr>
- <td><%=s.date_field%></td>
-
- <td>        <%grp  =  group  [ID == s.Group];%>
-<%=grp.Name%>
-</td>
- <td>@@</td>
- <td>                <%for each v in visit  [session == s.ID]
-                {%>
- <%=v.client.Name%>
-                                                                                              <%}%>
- </td>
-
-     
-</tr>
-                                                            <%}%>
-</tbody>
-</table>
-        <%}%>
-
+        hide = true
     }
 
     section Reports
@@ -1222,11 +1398,28 @@ content
    <tr>
     <td><%=office.Name%></td>
     <td><%=office.fax%></td>
+    <td><%=office.ID%></td>
+    <td><%=office.id_dabble%></td>
    </tr>
-                <%}%>
+                    <%}%>
 </tbody>
 </table>
         <%}%>
+
+        list  session_id_map_export
+        {
+            displayname = "session id map export"
+            show  all  rows  from  session 
+            (
+                id_dabble
+                ID
+            )
+            filters 
+            (
+                date_field
+                Therapist
+            )
+        }
 
     }
 
@@ -1235,8 +1428,14 @@ content
         string session_group(int sid)
         {
             s  =  session  [ID == input.sid];
-            g  =  group  [ID = s.Group];
+            g  =  group  [ID = s.group_id];
             return g.Name;
+        }
+
+        int prune_groups(group g)
+        {
+            delete from group[ null ];
+            return 0;
         }
 
     }
