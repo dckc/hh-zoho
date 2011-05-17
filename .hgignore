@@ -2,6 +2,15 @@ syntax: glob
 
 *~
 ,*
+*.pyc
+
+zoho-api-key
+
+dz.db
+hh_data.owl
+sessions.xls
+visits.xls
+clients.xls
 
 Dabble-2011-05-11-024407/*.csv
 hh-dabbles-screenshots/*.png
