@@ -21,13 +21,13 @@ def main(argv):
         db, bak = argv[2:4]
         prepare_db(db, bak)
     elif '--load-basics' in argv:
-        db, username, backup_dir = argv[2:5]
+        db, username = argv[2:4]
 
         conn = sqlite3.connect(db)
         def pw_cb():
             return getpass.getpass('Password for %s: ' % username)
 
-        hz = HH_Zoho(conn, username, pw_cb, backup_dir)
+        hz = HH_Zoho(conn, username, pw_cb, None)
 
         hz.load_basics()
 
@@ -228,16 +228,12 @@ class HH_Zoho(ZohoAPI):
         self.load_officers()
         self.load_groups()
 
-    def load_groups(self, basename="Group.csv"):
-        def fixup(tr):
-            return [dict(rec, id_dabble=rec['ID'],
-                         # "USD $20" => "20"
-                         rate=rec['rate'][len('USD $'):])
-                    for rec in tr]
-
-        self._load_table(basename, 'group',
-                         ('Name', 'rate', 'Eval', 'id_dabble'),
-                         fixup)
+    def load_groups(self):
+        dml = '''select id as id_dabble, name as Name, rate, Eval from groups'''
+        cols, records = self._query(dml)
+        self.truncate('group')
+        return sum(len(r)
+                   for r in self.add_records(self.app, 'group', cols, records))
 
     def load_clients(self):
         with transaction(self._conn) as q:
@@ -287,28 +283,33 @@ class HH_Zoho(ZohoAPI):
         return self.delete(self.app, form, 
                            [('ID', 'NotEqual', '0')], 'AND')
 
-    def load_offices(self, basename="Office.csv"):
-        def fixup(tr):
-            return [dict(rec, id_dabble=rec['ID'],
-                         address=rec['address'].replace('\x0b', ''))
-                    for rec in tr]
+    def load_offices(self):
+        dml = '''select id as id_dabble
+                              , name as Name
+                              , fax, address, notes from offices'''
+        cols, records = self._query(dml)
+        records = [dict(rec, address=rec['address'].replace('\x0b', ''))
+                   for rec in records]
+        self.truncate('office')
+        return sum(len(r)
+                   for r in self.add_records(self.app, 'office', cols, records))
 
-        self._load_table(basename, 'office',
-                         ('Name', 'fax', 'notes', 'address', 'id_dabble'),
-                         fixup)
+    def _query(self, dml):
+        with transaction(self._conn) as q:
+            q.execute(dml)
+            cols = [coldesc[0] for coldesc in q.description]
+            return cols, [dict(zip(cols, row))
+                          for row in q.fetchall()]
 
     def load_officers(self, basename="Officer.csv"):
-        idmap = self._idmap('office')
-
-        def fixup(tr):
-            return [dict(rec, id_dabble=rec['ID'],
-                         office=idmap.get(rec['office'], None))
-                    for rec in tr
-                    if rec['Name']]
-
-        self._load_table(basename, 'officer',
-                         ('Name', "email", "office", "id_dabble"),
-                         fixup)
+        dml = '''select id as id_dabble
+                              , name as Name
+                              , email, office as office_dabble from officers'''
+        cols, records = self._query(dml)
+        self.truncate('officer')
+        return sum(len(r)
+                   for r in self.add_records(self.app, 'officer',
+                                             cols, records))
 
     def _idmap(self, form):
         with transaction(self._conn) as q:

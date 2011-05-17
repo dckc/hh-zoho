@@ -19,7 +19,7 @@ DB=/tmp/dz.db
 BAK=../hh-dabble-kaput/Dabble-2011-05-16-130809
 U=dconnolly@hopeharborkc.com
 
-start: $(DB)
+start: load-basics
 
 load-idmaps: ,client_idmap.csv ,session_idmap.csv
 	$(PYTHON) migrate_hh.py --load-idmap $(DB) session ,session_idmap.csv
@@ -34,9 +34,11 @@ sessions.xls: $(DB)
 clients.xls: $(DB)
 	$(PYTHON) migrate_hh.py --make-clients-spreadsheet $(DB) $@
 
+load-basics: $(DB) zoho-api-key
+	$(PYTHON) migrate_hh.py --load-basics $(DB) $(U)
+
 $(DB): $(BAK)/Visit.csv hh_data.sql
 	$(PYTHON) migrate_hh.py --prepare-db $(DB) $(BAK)
-	$(PYTHON) migrate_hh.py --load-basics $(DB) $(U) $(BAK)
 
 
 hh_data.sql: hh_data.owl owl2sql.xsl
