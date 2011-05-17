@@ -34,7 +34,7 @@ def main(argv):
     elif '--truncate' in argv:
         form = argv[2]
         hz = HH_Zoho(None, None, None, None)  # assume we have a ticket
-        hz.truncate(form)
+        print >> sys.stderr, hz.truncate(form)
 
     elif '--save-idmap' in argv:
         db, form = argv[2:4]
@@ -182,6 +182,7 @@ class ZohoAPI(object):
     def delete(self, app, form, criteria, reloperator,
                    url='http://creator.zoho.com/api/xml/write'):
         e = self._where('delete', app, form, criteria, reloperator)
+        #print >> sys.stderr, 'delete:', etree.tostring(e, pretty_print=True)
         print >> sys.stderr, 'delete %s...' % form
         ans = urlopen(url,
                      urlencode(dict(apikey=self._apikey,
@@ -192,11 +193,14 @@ class ZohoAPI(object):
     def _where(self, op, app, form, criteria, reloperator):
         e = etree.Element('ZohoCreator')
         sub = etree.SubElement
-        e_app = sub(op and sub(e, 'applicationlist') or e,
-                    'application', name=app)
-        e_form = sub(op and sub(e_app, 'formlist') or e_app,
-                     'form', name=form)
-        e_crit = sub(op and sub(e_form, op) or e_form, 'criteria')
+        if op:
+            e_app = sub(sub(e, 'applicationlist'), 'application', name=app)
+            e_form = sub(sub(e_app, 'formlist'), 'form', name=form)
+            e_crit = sub(sub(e_form, op), 'criteria')
+        else:
+            e_app = sub(e, 'application', name=app)
+            e_form = sub(e_app, 'form', name=form)
+            e_crit = sub(e_form, 'criteria')
         first = True
         for n, op, v in criteria:
             if not first:
@@ -251,8 +255,8 @@ class HH_Zoho(ZohoAPI):
         return csv.DictReader(open(os.path.join(self._dir, basename)))
 
     def truncate(self, form):
-        return self.delete(self.app, form,
-                           [('ID', 'GreaterThan', '0')], 'AND')
+        return self.delete(self.app, form, 
+                           [('ID', 'NotEqual', '0')], 'AND')
 
     def load_offices(self, basename="Office.csv"):
         def fixup(tr):
