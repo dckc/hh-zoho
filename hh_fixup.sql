@@ -1,11 +1,13 @@
 
 insert into offices
 select 0+id, name, fax, address, notes
-from Office;
+from Office
+where name > '';
 
 insert into officers
 select 0+id, name, email, office
-from Officer;
+from Officer
+where name > '';
 
 insert into batches
 select 0+id, name
@@ -78,7 +80,7 @@ join current_clients cc
 create table current_sessions as
 select s.*
 from sessions s
-join (select session from current_visits) v
+join (select distinct session from current_visits) v
   on v.session = s.id
 ;
 

@@ -1,6 +1,6 @@
 /*
  * Author       : hopeharbor
- * Generated on : 17-May-2011 14:25:57
+ * Generated on : 17-May-2011 15:03:25
  * Version      : 3.0
  */
 application "Hope Harbor"
@@ -121,7 +121,13 @@ application "Hope Harbor"
             show  all  rows  from  visit 
             (
                 session.date_field as "Date"
-                client as "Client"
+                session_dabble
+                (
+                    view = session_Summary
+                )
+                session.group_name as "Group"
+                client.Name
+                client_dabble
                 note
                 client_pd as "Client Pd"
                 bill_date as "Bill Date"
@@ -213,6 +219,7 @@ application "Hope Harbor"
                 (
                     type  =  picklist
                     values  =  session.id_dabble
+                    displayformat = [ Group_Name1 ]
                     width  =  206px
                 )
 
@@ -282,7 +289,7 @@ application "Hope Harbor"
             (
                 "Link Officers"
                 (
-                    function = fixup.link_officers(officer)
+                    function = fixup.link_officers(office)
                     show action in view header = true
                     show action for each record = false
                     execute action for collection of records
@@ -383,6 +390,17 @@ application "Hope Harbor"
                 Name
                 fax
                 notes
+                id_dabble
+            )
+            custom actions
+            (
+                "Link Officers"
+                (
+                    function = fixup.link_officers(office)
+                    show action in view header = true
+                    show action for each record = false
+                    success message = ""
+                )
             )
         }
 
@@ -791,6 +809,9 @@ application "Hope Harbor"
                 ins_paid as "ins paid $"
                 id_dabble
                 session
+                (
+                    view = session_Summary
+                )
                 client
                 Attend
             )
@@ -1522,17 +1543,6 @@ content
             // info qty;
         }
 
-        void fixup.link_officers(officer who)
-        {
-            //qty = count(officer[(office_dabble > 0 && (office is null))]);
-            //for each o in officer  [(office_dabble > 0 && (office is null))] sort by  Name 
-            //{
-            //    target  =  office  [id_dabble == o.office_dabble];
-            //    o.office = target.ID;
-            // }
-            //info qty;
-        }
-
         void fixup.truncate_script()
         {
             delete from session[ ID != 0 ];
@@ -1556,6 +1566,34 @@ content
                     linked_session.group_name = g.Name;
                 }
                 info g.Name + ": " + qty;
+            }
+            return qty;
+        }
+
+        void fixup.truncate_bulk()
+        {
+            delete from visit[ ID != 0 ];
+            delete from session[ ID != 0 ];
+            delete from client[ ID != 0 ];
+        }
+
+        void fixup.truncate_basic()
+        {
+            delete from group[ ID != 0 ];
+            delete from office[ ID != 0 ];
+            delete from officer[ ID != 0 ];
+        }
+
+        int fixup.link_officers(office where)
+        {
+            qty = count(officer[(office_dabble == where.id_dabble && (office_name is null))]);
+            if (qty  >  0)
+            {
+                for each who in officer  [(office_dabble == where.id_dabble && (office_name is null))] sort by  Name  range from 1 to 1000
+                {
+                    who.office_name = where.Name;
+                }
+                info where.Name + ": " + qty;
             }
             return qty;
         }

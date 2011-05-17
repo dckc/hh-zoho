@@ -172,7 +172,7 @@ class ZohoAPI(object):
     def delete(self, app, form, criteria, reloperator,
                    url='http://creator.zoho.com/api/xml/write'):
         e = self._where('delete', app, form, criteria, reloperator)
-        #print >> sys.stderr, 'delete:', etree.tostring(e, pretty_print=True)
+        print >> sys.stderr, '@@delete:', etree.tostring(e, pretty_print=True)
         print >> sys.stderr, 'delete %s...' % form
         ans = urlopen(url,
                      urlencode(dict(apikey=self._apikey,
