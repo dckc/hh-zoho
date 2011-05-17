@@ -6,7 +6,7 @@ XSLTPROC=xsltproc
 PYTHON=python
 
 DB=/tmp/dz.db
-BAK=Dabble-2011-05-11-024407/
+BAK=../hh-dabble-kaput/Dabble-2011-05-16-130809
 U=dconnolly@hopeharborkc.com
 
 all: sessions.xls clients.xls
