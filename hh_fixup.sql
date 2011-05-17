@@ -64,7 +64,7 @@ where s.date != '--' -- done with this now?
  and s.group_id > 0
 group by c.id
 ) t
-where julianday('now') - julianday(last_seen) < 60
+where julianday('now') - julianday(last_seen) < 10 -- @@ 60
 order by t.last_seen desc
 ;
 

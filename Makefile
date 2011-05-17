@@ -1,4 +1,14 @@
 # Convert database schema from HTML to SQL via OWL
+#
+# 1. make
+#    to load group, office, and officer and produce sessions.xls and clients.xls
+# 2. upload clients.xls, using the 1st officer col and mapping id to id_dabble
+# 3. likewise sessions.xls
+# 4. Visit session_idmap view; export csv as ,session_idmap.csv
+# 5. Visit client_idmap... likewise
+# 4. make visits.xls
+# 5. upload visits.xls, taking care with related fields
+#
 
 MKDIR=mkdir
 
@@ -11,9 +21,9 @@ U=dconnolly@hopeharborkc.com
 
 all: sessions.xls clients.xls
 
-save-idmaps:
-	$(PYTHON) migrate_hh.py --save-idmap $(DB) client
-	$(PYTHON) migrate_hh.py --save-idmap $(DB) session
+load-idmaps: ,client_idmap.csv ,session_idmap.csv
+	$(PYTHON) migrate_hh.py --load-idmap $(DB) session ,session_idmap.csv
+	$(PYTHON) migrate_hh.py --load-idmap $(DB) client ,client_idmap.csv
 
 visits.xls: $(DB)
 	$(PYTHON) migrate_hh.py --make-visits-spreadsheet $(DB) $@

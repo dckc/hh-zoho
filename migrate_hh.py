@@ -36,11 +36,11 @@ def main(argv):
         hz = HH_Zoho(None, None, None, None)  # assume we have a ticket
         print >> sys.stderr, hz.truncate(form)
 
-    elif '--save-idmap' in argv:
-        db, form = argv[2:4]
+    elif '--load-idmap' in argv:
+        db, form, csvfn = argv[2:5]
         conn = sqlite3.connect(db)
         hz = HH_Zoho(conn, None, None, None)  # assume we have a ticket
-        hz.save_idmap(form)
+        hz.load_idmap(form, csvfn)
 
     elif '--make-clients-spreadsheet' in argv:
         db, out = argv[2:4]
@@ -287,14 +287,13 @@ class HH_Zoho(ZohoAPI):
             idmap=q.fetchall()
         return dict([(str(k), v) for k, v in idmap])
 
-    def save_idmap(self, form):
-        rows = self.view_records(self.app, form, (), '', ('id_dabble', 'ID'))
+    def load_idmap(self, form, csvfn):
         with transaction(self._conn) as work:
-            work.executemany("insert into id_map(t, did, zid) "
-                             "values (?, ?, ?)",
-                             [(form, int(row[0]), row[1])
-                              for row in rows])
-            print >> sys.stderr, 'id_map: %d x %s' % (work.rowcount, form)
+            import_csv(work, csvfn, '%s_idmap' % form)
+            work.execute('delete from id_map where t=?', [form])
+            work.execute(
+                '''insert into id_map (t, did, zid)
+                   select ?, id_dabble, ID from %s_idmap''' % form, [form])
 
 
 def make_clients_spreadsheet(db, out='clients.xls'):
@@ -378,6 +377,10 @@ def import_csv(trx, fn, table, colsize=500):
     rows = csv.reader(open(fn))
     colnames = [n.replace(' ', '_').upper()
                 for n in rows.next()]
+    try:
+        trx.execute('drop table %s' % table)
+    except:
+        pass
     trx.execute(_create_ddl(table, colnames, colsize))
     trx.executemany(_insert_dml(table, colnames),
                     [dict(zip(colnames,
