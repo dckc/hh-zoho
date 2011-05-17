@@ -16,19 +16,6 @@ U=dconnolly@hopeharborkc.com
 
 start: load-basics load-visits
 
-load-idmaps: ,client_idmap.csv ,session_idmap.csv
-	$(PYTHON) migrate_hh.py --load-idmap $(DB) session ,session_idmap.csv
-	$(PYTHON) migrate_hh.py --load-idmap $(DB) client ,client_idmap.csv
-
-visits.xls: $(DB)
-	$(PYTHON) migrate_hh.py --make-visits-spreadsheet $(DB) $@
-
-sessions.xls: $(DB)
-	$(PYTHON) migrate_hh.py --make-sessions-spreadsheet $(DB) $@
-
-clients.xls: $(DB)
-	$(PYTHON) migrate_hh.py --make-clients-spreadsheet $(DB) $@
-
 load-visits: $(DB) zoho-api-key
 	$(PYTHON) migrate_hh.py --load-visits $(DB) $(U)
 

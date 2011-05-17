@@ -13,7 +13,6 @@ import sqlite3
 import sys
 
 from lxml import etree
-import xlwt
 
 
 def main(argv):
@@ -24,6 +23,7 @@ def main(argv):
         db, username = argv[2:4]
 
         conn = sqlite3.connect(db)
+
         def pw_cb():
             return getpass.getpass('Password for %s: ' % username)
 
@@ -36,12 +36,6 @@ def main(argv):
         hz = HH_Zoho(None, None, None, None)  # assume we have a ticket
         print >> sys.stderr, hz.truncate(form)
 
-    elif '--load-idmap' in argv:
-        db, form, csvfn = argv[2:5]
-        conn = sqlite3.connect(db)
-        hz = HH_Zoho(conn, None, None, None)  # assume we have a ticket
-        hz.load_idmap(form, csvfn)
-
     elif '--load-visits' in argv:
         db = argv[2]
         conn = sqlite3.connect(db)
@@ -50,18 +44,6 @@ def main(argv):
         hz.load_sessions()
         hz.load_visits()
 
-    elif '--make-clients-spreadsheet' in argv:
-        db, out = argv[2:4]
-        make_clients_spreadsheet(db, out)
-
-    elif '--make-sessions-spreadsheet' in argv:
-        db, out = argv[2:4]
-        make_sessions_spreadsheet(db, out)
-        
-    elif '--make-visits-spreadsheet' in argv:
-        db, out = argv[2:4]
-        make_visits_spreadsheet(db, out)
-        
 
 def prepare_db(db, bak, init='hh_data.sql', fixup='hh_fixup.sql'):
     conn = sqlite3.connect(db)
@@ -147,7 +129,7 @@ class ZohoAPI(object):
             [e_record.xpath('column[@name="%s"]/value/text()' % col)[0]
              for col in columns]
             for e_record in found]
-        
+
     def add_records(self, app, form, columns, rows, chunk_size=200):
         done = 0
         while done < len(rows):
@@ -215,7 +197,7 @@ class ZohoAPI(object):
                 sub(e_crit, 'reloperator').text = reloperator
             sub(e_crit, 'field', name=n, compOperator=op, value=v)
         return e
-        
+
 
 class HH_Zoho(ZohoAPI):
     app = 'hope-harbor'
@@ -238,7 +220,7 @@ class HH_Zoho(ZohoAPI):
                    for r in self.add_records(self.app, 'group', cols, records))
 
     def load_clients(self):
-        dml= '''select id as id_dabble, name as Name
+        dml = '''select id as id_dabble, name as Name
                      , ins as Ins, approval as Approval
                      , DX, note as Note, officer as officer_dabble, DOB
                      , address, phone, batch from current_clients'''
@@ -248,7 +230,7 @@ class HH_Zoho(ZohoAPI):
                    self.add_records(self.app, 'client', cols, records))
 
     def load_sessions(self):
-        dml= '''select id as id_dabble, date as date_field
+        dml = '''select id as id_dabble, date as date_field
                      , group_id as group_dabble, time as Time
                      , therapist as Therapist from current_sessions'''
         cols, records = self._query(dml)
@@ -257,7 +239,7 @@ class HH_Zoho(ZohoAPI):
                    self.add_records(self.app, 'session', cols, records))
 
     def load_visits(self):
-        dml= '''select session as session_dabble
+        dml = '''select session as session_dabble
                      , client as client_dabble, attend as Attend
                      , note, bill_date, check_date, ins_paid
                 from current_visits'''
@@ -266,34 +248,8 @@ class HH_Zoho(ZohoAPI):
         return sum(len(r) for r in
                    self.add_records(self.app, 'visit', cols, records))
 
-    def _load_table(self, basename, form, cols, fixup):
-        tr = self._csv_reader(basename)
-        tr.next()
-        self._load_mapped_records(form, cols, fixup(tr))
-
-    def _load_mapped_records(self, form, cols, rows):
-        self.truncate(form)
-
-        for results in self.add_records(self.app, form, cols, rows):
-            idmap = [
-                (form, int(id_dabble), id_zoho)
-                for id_dabble, id_zoho in [
-                    (e_vals.xpath('field[@name="ID"]/value/text()')[0],
-                     e_vals.xpath('field[@name="id_dabble"]/value/text()')[0])
-                    for e_vals in results
-                    ]]
-
-            with transaction(self._conn) as work:
-                work.executemany('''insert into id_map(t, did, zid)
-                                    values(?, ?, ?)''',
-                                 idmap)
-                print >> sys.stderr, 'id_map: %d x %s' % (work.rowcount, form)
-
-    def _csv_reader(self, basename):
-        return csv.DictReader(open(os.path.join(self._dir, basename)))
-
     def truncate(self, form):
-        return self.delete(self.app, form, 
+        return self.delete(self.app, form,
                            [('ID', 'NotEqual', '0')], 'AND')
 
     def load_offices(self):
@@ -323,97 +279,6 @@ class HH_Zoho(ZohoAPI):
         return sum(len(r)
                    for r in self.add_records(self.app, 'officer',
                                              cols, records))
-
-    def _idmap(self, form):
-        with transaction(self._conn) as q:
-            q.execute("select did, zid from id_map where t=?", (form,))
-            idmap=q.fetchall()
-        return dict([(str(k), v) for k, v in idmap])
-
-    def load_idmap(self, form, csvfn):
-        with transaction(self._conn) as work:
-            import_csv(work, csvfn, '%s_idmap' % form)
-            work.execute('delete from id_map where t=?', [form])
-            work.execute(
-                '''insert into id_map (t, did, zid)
-                   select ?, id_dabble, ID from %s_idmap''' % form, [form])
-
-
-def make_clients_spreadsheet(db, out='clients.xls'):
-    cols, rows = _get_table(db, _current_clients_dml())
-    _write_spreadsheet(out, cols, rows)
-
-
-def _current_clients_dml():
-    dml= '''select m.zid as officer, c.*
-             from clients c
-             join current_clients cc
-               on cc.id = c.id
-             left join id_map m
-                    on m.t = 'officer' and m.did = c.officer
-             order by c.name'''
-    return dml
-
-
-def make_sessions_spreadsheet(db, out='sessions.xls'):
-    dml = '''select m.zid as group_id, s.*
-             from current_sessions s
-             join id_map m
-               on m.t = 'group' and m.did = s.group_id
-             order by s.date desc'''
-    cols, rows = _get_table(db, dml)
-    _write_spreadsheet(out, cols, rows)
-
-
-def make_visits_spreadsheet(db, out='visits.xls'):
-    conn = sqlite3.connect(db)
-
-    # Doing the join in the DB was remarkably slow.
-    # Let's try python hash tables...
-    with transaction(conn) as q:
-        q.execute("select did, zid from id_map where t='client'")
-        cmap = dict(q.fetchall())
-        q.execute("select did, zid from id_map where t='session'")
-        smap = dict(q.fetchall())
-        q.execute("select * from current_visits")
-        cols = [coldesc[0] for coldesc in q.description]
-        rows = [list(row) for row in q.fetchall()]
-
-    ccol = cols.index('client')
-    scol = cols.index('session')
-    for row in rows:
-        row[ccol] = cmap[row[ccol]]
-        row[scol] = smap[row[scol]]
-
-    _write_spreadsheet(out, cols, rows)
-
-
-def _get_table(db, dml):
-    conn = sqlite3.connect(db)
-        
-    with transaction(conn) as q:
-        q.execute(dml)
-        cols = [coldesc[0] for coldesc in q.description]
-        rows = q.fetchall()
-
-    return cols, rows
-
-
-def _write_spreadsheet(out, cols, rows):
-    wb = xlwt.Workbook()
-    ws = wb.add_sheet('Records')
-    col = 0
-    for colname in cols:
-        ws.write(0, col, colname)
-        col += 1
-    rownum = 1
-    for row in rows:
-        col = 0
-        for v in row:
-            ws.write(rownum, col, v)
-            col += 1
-        rownum += 1
-    wb.save(out)
 
 
 def import_csv(trx, fn, table, colsize=500):
