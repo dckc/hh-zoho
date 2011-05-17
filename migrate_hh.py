@@ -42,11 +42,13 @@ def main(argv):
         hz = HH_Zoho(conn, None, None, None)  # assume we have a ticket
         hz.load_idmap(form, csvfn)
 
-    elif '--load-clients' in argv:
+    elif '--load-visits' in argv:
         db = argv[2]
         conn = sqlite3.connect(db)
         hz = HH_Zoho(conn, None, None, None)  # assume we have a ticket
         hz.load_clients()
+        hz.load_sessions()
+        hz.load_visits()
 
     elif '--make-clients-spreadsheet' in argv:
         db, out = argv[2:4]
@@ -236,22 +238,33 @@ class HH_Zoho(ZohoAPI):
                    for r in self.add_records(self.app, 'group', cols, records))
 
     def load_clients(self):
-        with transaction(self._conn) as q:
-            q.execute(_current_clients_dml())
-            cols = [coldesc[0] for coldesc in q.description]
-            rows = q.fetchall()
+        dml= '''select id as id_dabble, name as Name
+                     , ins as Ins, approval as Approval
+                     , DX, note as Note, officer as officer_dabble, DOB
+                     , address, phone, batch from current_clients'''
+        cols, records = self._query(dml)
+        self.truncate('client')
+        return sum(len(r) for r in
+                   self.add_records(self.app, 'client', cols, records))
 
-        # TODO: rename Zoho fields to lower-case
-        zcols = ('officer', 'id_dabble', 'Name', 'Ins',
-                 'Approval', 'DX', 'Note', 'DOB',
-                 'address', 'phone', 'batch')
-        print >> sys.stderr, "@@load clients: %s => %s" % (cols, zcols)
-        self._load_mapped_records('client', zcols,
-                                  # splice out dabble officer id
-                                  # TODO: add an officer_dabble field?
-                                  [dict(zip(zcols,
-                                            row[:7] + row[8:]))
-                                   for row in rows])
+    def load_sessions(self):
+        dml= '''select id as id_dabble, date as date_field
+                     , group_id as group_dabble, time as Time
+                     , therapist as Therapist from current_sessions'''
+        cols, records = self._query(dml)
+        self.truncate('session')
+        return sum(len(r) for r in
+                   self.add_records(self.app, 'session', cols, records))
+
+    def load_visits(self):
+        dml= '''select session as session_dabble
+                     , client as client_dabble, attend as Attend
+                     , note, bill_date, check_date, ins_paid
+                from current_visits'''
+        cols, records = self._query(dml)
+        self.truncate('visit')
+        return sum(len(r) for r in
+                   self.add_records(self.app, 'visit', cols, records))
 
     def _load_table(self, basename, form, cols, fixup):
         tr = self._csv_reader(basename)
