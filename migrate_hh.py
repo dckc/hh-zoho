@@ -42,6 +42,12 @@ def main(argv):
         hz = HH_Zoho(conn, None, None, None)  # assume we have a ticket
         hz.load_idmap(form, csvfn)
 
+    elif '--load-clients' in argv:
+        db = argv[2]
+        conn = sqlite3.connect(db)
+        hz = HH_Zoho(conn, None, None, None)  # assume we have a ticket
+        hz.load_clients()
+
     elif '--make-clients-spreadsheet' in argv:
         db, out = argv[2:4]
         make_clients_spreadsheet(db, out)
@@ -142,15 +148,13 @@ class ZohoAPI(object):
         
     def add_records(self, app, form, columns, rows, chunk_size=200):
         done = 0
-        out = []
         while done < len(rows):
             print >> sys.stderr, '%s: %d of %d' % (form, done, len(rows))
             chunk = self._add_records(app, form, columns,
                                       rows[done:done + chunk_size])
             print >> sys.stderr, 'added %d in %s.' % (len(chunk), form)
-            out.extend(chunk)
+            yield chunk
             done += chunk_size
-        return out
 
     def _add_records(self, app, form, columns, rows,
                     url='http://creator.zoho.com/api/xml/write'):
@@ -164,7 +168,9 @@ class ZohoAPI(object):
                 # watch out for:
                 # File "apihelpers.pxi", line 1242, in lxml.etree._utf8 (src/lxml/lxml.etree.c:19848)
                 # ValueError: All strings must be XML compatible: Unicode or ASCII, no NULL bytes
-                sub(sub(e_add, 'field', name=n), 'value').text = row[n]
+                if row[n]:
+                    sub(sub(e_add, 'field', name=n),
+                        'value').text = unicode(row[n])  # allow integers
         print >> sys.stderr, 'add...', form, columns, rows[0]
         #print >>sys.stderr, etree.tostring(e, pretty_print=True)
         ans = urlopen(url,
@@ -232,24 +238,47 @@ class HH_Zoho(ZohoAPI):
         self._load_table(basename, 'group',
                          ('Name', 'rate', 'Eval', 'id_dabble'),
                          fixup)
-        
-    def _load_table(self, basename, form, columns_out, fixup):
+
+    def load_clients(self):
+        with transaction(self._conn) as q:
+            q.execute(_current_clients_dml())
+            cols = [coldesc[0] for coldesc in q.description]
+            rows = q.fetchall()
+
+        # TODO: rename Zoho fields to lower-case
+        zcols = ('officer', 'id_dabble', 'Name', 'Ins',
+                 'Approval', 'DX', 'Note', 'DOB',
+                 'address', 'phone', 'batch')
+        print >> sys.stderr, "@@load clients: %s => %s" % (cols, zcols)
+        self._load_mapped_records('client', zcols,
+                                  # splice out dabble officer id
+                                  # TODO: add an officer_dabble field?
+                                  [dict(zip(zcols,
+                                            row[:7] + row[8:]))
+                                   for row in rows])
+
+    def _load_table(self, basename, form, cols, fixup):
         tr = self._csv_reader(basename)
         tr.next()
+        self._load_mapped_records(form, cols, fixup(tr))
+
+    def _load_mapped_records(self, form, cols, rows):
         self.truncate(form)
 
-        results = self.add_records(self.app, form, columns_out, fixup(tr))
+        for results in self.add_records(self.app, form, cols, rows):
+            idmap = [
+                (form, int(id_dabble), id_zoho)
+                for id_dabble, id_zoho in [
+                    (e_vals.xpath('field[@name="ID"]/value/text()')[0],
+                     e_vals.xpath('field[@name="id_dabble"]/value/text()')[0])
+                    for e_vals in results
+                    ]]
 
-        idmap = []
-        for e_vals in results:
-            id_zoho = e_vals.xpath('field[@name="ID"]/value/text()')[0]
-            id_dabble = e_vals.xpath('field[@name="id_dabble"]/value/text()')[0]
-            idmap.append((form, int(id_dabble), id_zoho))
-        with transaction(self._conn) as work:
-            work.executemany('''insert into id_map(t, did, zid)
-                                values(?, ?, ?)''',
-                             idmap)
-            print >> sys.stderr, 'id_map: %d x %s' % (work.rowcount, form)
+            with transaction(self._conn) as work:
+                work.executemany('''insert into id_map(t, did, zid)
+                                    values(?, ?, ?)''',
+                                 idmap)
+                print >> sys.stderr, 'id_map: %d x %s' % (work.rowcount, form)
 
     def _csv_reader(self, basename):
         return csv.DictReader(open(os.path.join(self._dir, basename)))
@@ -273,7 +302,7 @@ class HH_Zoho(ZohoAPI):
 
         def fixup(tr):
             return [dict(rec, id_dabble=rec['ID'],
-                         office=idmap.get(rec['office'], ''))
+                         office=idmap.get(rec['office'], None))
                     for rec in tr
                     if rec['Name']]
 
@@ -297,15 +326,19 @@ class HH_Zoho(ZohoAPI):
 
 
 def make_clients_spreadsheet(db, out='clients.xls'):
-    dml = '''select m.zid as officer, c.*
+    cols, rows = _get_table(db, _current_clients_dml())
+    _write_spreadsheet(out, cols, rows)
+
+
+def _current_clients_dml():
+    dml= '''select m.zid as officer, c.*
              from clients c
              join current_clients cc
                on cc.id = c.id
              left join id_map m
                     on m.t = 'officer' and m.did = c.officer
              order by c.name'''
-    cols, rows = _get_table(db, dml)
-    _write_spreadsheet(out, cols, rows)
+    return dml
 
 
 def make_sessions_spreadsheet(db, out='sessions.xls'):

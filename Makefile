@@ -19,7 +19,7 @@ DB=/tmp/dz.db
 BAK=../hh-dabble-kaput/Dabble-2011-05-16-130809
 U=dconnolly@hopeharborkc.com
 
-all: sessions.xls clients.xls
+start: $(DB)
 
 load-idmaps: ,client_idmap.csv ,session_idmap.csv
 	$(PYTHON) migrate_hh.py --load-idmap $(DB) session ,session_idmap.csv
