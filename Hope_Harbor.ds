@@ -1,6 +1,6 @@
 /*
  * Author       : hopeharbor
- * Generated on : 17-May-2011 08:09:01
+ * Generated on : 17-May-2011 10:44:01
  * Version      : 3.0
  */
 application "Hope Harbor"
@@ -449,7 +449,7 @@ content
         {
             field alignment = left
             
-            Name
+            must  have  Name
             (
                 type  =  text
                 width  =  200px
@@ -503,7 +503,6 @@ content
             id_dabble
             (
                 type  =  number
-                private  =  true
                 width  =  100px
             )
 
@@ -1006,37 +1005,48 @@ content
         {
             field alignment = left
             
-            Name
-            (
-                type  =  text
-                width  =  200px
-            )
+            column
+            {
+                must  have  Name
+                (
+                    type  =  text
+                    width  =  200px
+                )
 
-            email
-            (
-                type  =  email
-                width  =  200px
-            )
+                email
+                (
+                    type  =  email
+                    width  =  200px
+                )
 
-            office
-            (
-                type  =  picklist
-                values  =  office.ID
-                displayformat = [ Name + " - " + fax ]
-                allow new entries = true
-                [
-                    displayname = "Add office"
-                ]
-                width  =  206px
-            )
+                office
+                (
+                    type  =  picklist
+                    values  =  office.ID
+                    displayformat = [ Name + " - " + fax ]
+                    allow new entries = true
+                    [
+                        displayname = "Add office"
+                    ]
+                    width  =  206px
+                )
 
-            id_dabble
-            (
-                type  =  number
-                private  =  true
-                width  =  100px
-            )
+            }
+            column
+            {
+                unique  id_dabble
+                (
+                    type  =  number
+                    width  =  100px
+                )
 
+                office_dabble
+                (
+                    type  =  number
+                    width  =  100px
+                )
+
+            }
             actions
             {
                 on add
@@ -1076,8 +1086,21 @@ content
                 Name
                 email
                 office
+                office_dabble
+            )
+            sort by
+            (
+                Name   ascending
+            )
+            custom actions
+            (
+                "Link Officers"
                 (
-                    view = office_Summary1
+                    function = fixup.link_officers(officer)
+                    show action in view header = true
+                    show action for each record = false
+                    execute action for collection of records
+                    success message = "win"
                 )
             )
         }
@@ -1110,6 +1133,7 @@ content
                 email
                 office
                 id_dabble
+                office_dabble
             )
         }
 
@@ -1227,38 +1251,44 @@ content
         {
             field alignment = left
             
-            Name
-            (
-                type  =  text
-                width  =  200px
-            )
+            column
+            {
+                must  have  Name
+                (
+                    type  =  text
+                    width  =  200px
+                )
 
-            fax
-            (
-                type  =  text
-                width  =  200px
-            )
+                fax
+                (
+                    type  =  text
+                    width  =  200px
+                )
 
-            notes
-            (
-                type  =  text
-                width  =  200px
-            )
+                address
+                (
+                    type  =  textarea
+                    height  =  100px
+                    width  =  200px
+                )
 
-            address
-            (
-                type  =  textarea
-                height  =  100px
-                width  =  200px
-            )
+            }
+            column
+            {
+                id_dabble
+                (
+                    type  =  number
+                    width  =  100px
+                )
 
-            id_dabble
-            (
-                type  =  number
-                private  =  true
-                width  =  100px
-            )
+                notes
+                (
+                    type  =  textarea
+                    height  =  100px
+                    width  =  200px
+                )
 
+            }
             actions
             {
                 on add
@@ -1498,6 +1528,17 @@ content
         {
             delete from group[ null ];
             return 0;
+        }
+
+        void fixup.link_officers(officer who)
+        {
+            qty = count(officer[(office_dabble > 0 && (office is null))]);
+            for each o in officer  [(office_dabble > 0 && (office is null))] sort by  Name 
+            {
+                target  =  office  [id_dabble == o.office_dabble];
+                o.office = target.ID;
+            }
+            info qty;
         }
 
     }
