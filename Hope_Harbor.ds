@@ -1,6 +1,6 @@
 /*
  * Author       : hopeharbor
- * Generated on : 16-May-2011 14:50:57
+ * Generated on : 17-May-2011 08:09:01
  * Version      : 3.0
  */
 application "Hope Harbor"
@@ -321,7 +321,7 @@ content
         {
             field alignment = left
             
-            session
+            must  have  session
             (
                 type  =  picklist
                 values  =  session.ID
@@ -333,7 +333,7 @@ content
                 width  =  206px
             )
 
-            client
+            must  have  client
             (
                 type  =  picklist
                 values  =  client.ID
@@ -430,6 +430,9 @@ content
                 session.date_field as "Date"
                 session.Name as "Group"
                 client as "Client"
+                (
+                    view = client_Summary1
+                )
                 note
                 client_pd as "client pd"
                 bill_date as "Bill Date"
@@ -952,6 +955,49 @@ content
             )
         }
 
+        grid  Billing_Ins_Edits_test
+        {
+            displayname = "Billing Ins Edits test"
+            show  all  rows  from  visit 
+            (
+                client
+                (
+                    view = client_Summary1
+                )
+                session.date_field as "date"
+                session
+                (
+                    view = session_Summary
+                )
+                Attend
+                client_pd as "client pd", display total
+                note
+                bill_date as "bill date"
+                check_date as "check date"
+                ins_paid as "ins paid $", display total
+            )
+            filters 
+            (
+                client
+            )
+            group by
+            (
+                client   ascending
+            )
+            sort by
+            (
+                session.date_field   ascending
+            )
+            permission
+            (
+                add = true
+                duplicate = true
+                edit = true
+                bulk edit = true
+                delete = true
+            )
+        }
+
     }
 
     section officer
@@ -1406,9 +1452,8 @@ content
 </table>
         <%}%>
 
-        list  session_id_map_export
+        list  session_idmap
         {
-            displayname = "session id map export"
             show  all  rows  from  session 
             (
                 id_dabble
@@ -1418,6 +1463,23 @@ content
             (
                 date_field
                 Therapist
+            )
+        }
+
+        list  client_idmap
+        {
+            show  all  rows  from  client 
+            (
+                Name as "name"
+                DOB
+                id_dabble
+                Added_Time as "added"
+                ID
+                Modified_Time as "modified"
+            )
+            filters 
+            (
+                DOB
             )
         }
 
